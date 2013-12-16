@@ -1,0 +1,4 @@
+Chuck Moore's Forth for the Novix NC4016, dated December 1987.
+
+Code is in cmforth.fth, shadow blocks in cmforth.txt.  They are combined
+side-by-side in the 'combined' branch.
