@@ -1,0 +1,287 @@
+
+A DECOMPILER AND DEBUGGER FOR THE NOVIX NC4000
+----------------------------------------------
+
+    
+Andrew McKewan
+P.O. Box 176
+Lakeville, MI  48036
+
+
+
+
+USING THE DECOMPILER
+--------------------
+
+The decompiler is a tool to convert object code back into source code.
+In traditional Forth systems there is a one-to-one correspondence
+between the CFA of a word and its name.  In the NC4000 only subroutine
+calls have this property. The names of machine instructions cannot be
+determined from the opcode.  In addition, many source words may be
+combined into a single instruction.  Decompiling of NC4000 routines
+requires a more sophisticated scheme.
+
+The source for the decompiler is in screens 17 to 35.  To decompile word
+xxx type
+
+        SEE xxx
+
+To decompile the word starting at hex address nnnn type
+
+        SEE' nnnn
+
+This second method is needed for headerless words.
+
+The decompiler then displays up to 15 instructions with address in hex,
+instruction in octal and Forth source form.  If there is more to
+display, the following keys can be pressed:
+
+        Q               Quit the decompiler
+
+        P               Decompile 15 instructions
+
+        Space           Decompile 1 instruction
+
+The decompiler will stop when it detects the end of a definition but it
+doesn't always know where the end is.  This is because it stops when it
+runs into the header of the next word.  It will be fooled if the
+following word is headerless or you are decompiling the latest word in
+the dictionary.
+
+
+HOW THE DECOMPILER WORKS
+------------------------
+
+The source for the decompiler is listed in screens 6 through 35 in the
+appendix.  Some of the code has been copied from a decompiler written by
+Clifford King that appeared in "More on NC4000" volume 3, pp. 57-63.
+His decompiler broke down the machine instructions and displayed each
+field.  This is a good tool for understanding the instruction set.  For
+the decompiler to be used with the debugger I wanted to reproduce the
+original source to that the user can follow the execution of a
+definition as they step through it.
+
+The word DIS.LINE on screen 34 decompiles one instruction.  It first
+checks to see if the address corresponds to the link field of a header
+by searching through the dictionary threads.  If it is, the end of the
+word has been reached and DIS.LINE returns 0.  Otherwise it tests the
+instruction to see if it is a call or a machine instruction.  DIS.LINE
+then returns the address of the next instruction.
+
+
+CALL INSTRUCTIONS
+-----------------
+
+Call instructions are decompiled on screen 33.  Two special cases are
+handled, dot" and abort" .  These instructions are followed by an in-
+line string literal.  The word STR. displays the string and advances the
+address past the string.  The two words are headerless and I have given
+their addresses in the cmFORTH eprom dated 7/18/87.  If the eprom
+changes you can find out the correct address by substituting -1 and
+decompiling a word that contains ." and ABORT" .  These words will be
+decompiled as having no header and the address will be given.  You can
+then go back and put in the correct address.
+
+The rest of the call instructions are passed to HEAD. on screen 12.
+This word prints the header of the word if it can find it, otherwise it
+prints "No Header" and the address.
+
+Machine instructions are broken down into types by DIS.INS on screen 32.
+Bits 12-14 determine the instruction type.
+
+
+ALU INSTRUCTIONS
+----------------
+
+The ALU instructions are the most complicated instructions on the
+NC4000.  There are several bit fields in the instructions that perform
+certain tasks, mostly in parallel with each other. For example, an
+instruction can add together the top two stack elements, shift the
+result left by two, copy the top of stack to the second item, push the
+second item to the off chip stack, and return from a subroutine, all in
+one cycle!  This instruction would be
+
+        2DUP + 2* ;     ( 104161 octal )
+
+One input to the ALU is from the T (top) register and the other can be
+from the N (next) register or from the MD (multiply/divide) or SR
+(square root) registers.  The output can be either one of the inputs
+unchanged or the result of one of the operations {+, -, AND, OR, XOR}
+which is put back into the T register.
+
+The word ALU.INS on screen 23 handles the multiply and divide
+instructions as special cases.  Most of what these instructions do can
+be determined from the bit fields.  But the selection of the MD or SR
+registers as an input to the ALU has special side effects.
+
+The stack manipulation instructions are obtained by setting the ALU code
+to 0 (pass T) or 7 (pass Y).  These instructions are converted to source
+in screens 19 and 20 by examining the SA (stack active) and Tn (copy T
+to N) bits.  For example, we can swap the T and N registers by passing N
+through the ALU, copying T to N and leaving the stack inactive.
+
+The ALU instructions that perform operations are decompiled by ALU.ALU
+on screen 18.  Again the SA and Tn bits determine the stack effect.
+ALU. prints the ALU operation and -ALU. prints the operation with the
+operands reversed.  CARRY. prints the carry bit if included.
+
+The output of the ALU can be shifted left or right by one bit before
+being put back in the T register.  A 32 bit shift may also be performed
+treating T and N as a 32 bit quantity.  The shifting is decoded by
+SHIFT. on screen 21.  0< propagates the sign bit of T through the whole
+register.
+
+
+BRANCHING INSTRUCTIONS
+----------------------
+
+There are three branch instructions in the NC4000: conditional branch,
+unconditional branch and loop.  The conditional branch is taken if the T
+register is zero.  The T register is also dropped from the stack.  The
+loop instruction checks the I register.  If I is not zero, it is
+decremented and the branch is taken, otherwise it is popped from the
+return stack and the next sequential instruction is executed.
+
+All of the branch instructions have a 12-bit destination imbedded in the
+instruction.  This is an absolute offset within the current 4K page,
+therefor branches can only be within the same 4K page.  If large
+programs are compiled, the compiler must be able to handle this problem;
+cmFORTH does not.
+
+The branch instructions are decompiled on screen 24.
+
+
+LITERAL AND MEMORY INSTRUCTIONS
+-------------------------------
+
+The literal and memory instructions have some regularity to their
+decoding.  However there are many cases where their behavior seems to be
+governed by random logic, especially the return stack operations.  The
+only way I found to decode them was to handle each instruction
+individually.  Screens 25-31 decompile the literal and memory
+instructions.
+
+
+USING THE DEBUGGER
+------------------
+
+After the debugger and application code have been loaded, you can select
+a word to be traced by typing
+
+        DEBUG xxx
+
+You can then execute xxx directly or other words that will call xxx.
+When xxx is reached the debugger will be engaged.  Before each
+instruction in the definition of xxx is executed the debugger will
+display the stack, decompile the instruction and wait for a one key
+command.
+
+        Q               Quit the debugger and remove trap
+
+        F               Execute some Forth words until you type RESUME
+
+        C               Disengage debugger and continue execution
+
+        R               Resume execution but leave debugger active
+
+        Other           Execute one instruction
+
+Each time xxx is encountered it will be traced in this fashion.  To
+remove the debugger type
+
+        UNBUG
+
+
+
+HOW THE DEBUGGER WORKS
+----------------------
+
+The debugger in F83 is implemented by patching in a new NEXT routine.
+The new routine checks if the IP is in the range of the word being
+debugged.  If it is the debugger is activated.  This implementation is
+not possible on the NC4000 because there is no routine for NEXT--it is
+part of the hardware.
+
+In Forths implemented on conventional microprocessors there are several
+types of words: code words, colon definitions, constants, variables etc.
+In the NC4000, all instructions consist of either machine instructions
+or subroutine calls.  Therefore there is a consistent format to each
+word.
+
+In order to debug a word I put the address of my breakpoint routine into
+the first cell of the definition, saving the old value.  When the
+breakpoint is encountered I replace the original instruction and display
+the stack, decompile the instruction and process the users command.
+
+I then calculate where I should place the next breakpoint to allow one
+instruction to execute.  When I resume, the instruction executes and I
+once again encounter the breakpoint.  If an instruction has the return
+bit set, I reset the breakpoint at the first instruction of the
+definition and I'm ready for the next time the word is called.
+
+This implementation has the advantage that there is no speed penalty for
+words that are not being debugged.  In the F83 implementation, NEXT
+becomes a complicated routine and slows everything down.  The
+disadvantage of this debugger is that the behavior of the branching and
+literal words must be known so that the debugger can calculate the
+address of the next instruction.  If a DO..LOOP is added for instance,
+the debugger must be modified to handle this structure.  In addition,
+this debugger cannot be used on definitions in ROM.
+
+The source code for the debugger is on screens 36-42.  The main word
+DEBUG first removes any previous breakpoints.  It then looks up the next
+word in the input stream and sets IP0 to point to the first word in the
+definition.  It calls RESTART to set IP to this value also and then
+patches in the breakpoint routine at this address.  The debugger will be
+activated whenever the word executes, either directly by the user or
+nested deep within other definitions.
+
+The breakpoint routine is TRACE on screen 41.  It first removes the
+breakpoint and puts back the original instruction.  It then decrements
+the address on the return stack.  This is because when we exit from
+TRACE, we want to execute the instruction we just put back.  .TRACE then
+displays the stack and the instruction about to execute.  The user then
+presses a key to cause one of several actions as described earlier.  The
+last action of TRACE is to reset the breakpoint so that just one
+instruction or call will execute.
+
+NEXT-BKPT on screen 39 is the only tricky part of the debugger.  Based
+on the type of instruction it calls one of the routines on screens 37-38
+to set the next value of IP.  Most notable is DO-LOOP and DO-MEM.  DO-
+LOOP must dig into the return stack to find the loop index of the
+definition being debugged. DO-MEM checks for the full literal fetch
+instructions which take two cells and advances the IP accordingly.  If
+instructions are determined to have the return bit set, RESTART is
+called to reset IP back to the beginning of the definition for the next
+time it is called.
+
+
+DUMP UTILITY
+------------
+
+Screen 14 contains a simple dump routine.  DU will display 8 cells of
+memory in hex and ascii.  To dump a block of memory type
+
+        addr len DUMP
+
+
+CONCLUSION
+----------
+
+The debugger has a simple structure but it does require knowledge of the
+behaviour of the NC4000 instruction set and cmFORTH.  If additional
+structures or literal instructions are added the debugger must be
+modified to accomodate them.  Because of the lack of a "NEXT" routine,
+though, this was the only method I could devise to accomplish single
+stepping.  The code was original implemented on top of F83 and should be
+able to be modified for any Forth system.
+
+The decompiler in a way mimics the decoding in the NC4000 itself.  The
+use of so many CASE statements is a brute force way of decoding the
+instructions.  But some of the instructions are not regular enough to
+avoid this.  The decompiler does handle all of the instructions that
+cmFORTH optimizes as well as some that it does not.
+
+Writing the decompiler and debugger have given me a deeper understanding
+of the NC4000 chip.  The instruction set is really quite simple and yet
+sufficient to implement a fast Forth computer.

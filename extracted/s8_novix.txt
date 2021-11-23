@@ -1,0 +1,16 @@
+28Nov88jax
+
+Friends:
+
+	If you previously downloaded S8_NOVIX.ARC there was an error on
+	screen 13 in the references to Amiga structures that is fixed
+	in the accompanying version of S8_NOVIX.ARC. The only bug was
+	that when you thought you would be disabling XON/XOFF for the
+	Novix, which does not respect that protocol under cmForth, you
+	would not be doing so, so every ascii hex 13 would hang ...
+
+	If you downloaded JAXA4VDT.ARC, the same bug on the same screen
+	applies. The fix in the accompanying file to this note applies.
+
+	regards, jack woehr
+	{jax@well.UUCP well!jax@lll-winken.arpa} JAX on GEnie
