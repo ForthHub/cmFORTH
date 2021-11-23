@@ -1,0 +1,178 @@
+	\ (* ************************************************** *) /
+	\ (*							*) /
+	\ (*		      T H E  M U S E		  	*) /
+	\ (*	     Marcel Hendrix, December 29th 1988	        *) /
+	\ (*							*) /
+	\ (* FC: Hal Chamberlin in Musical Applications of uP's	*) /
+	\ (* ************************************************** *) /
+
+
+DOC
+ÄÄÄ
+
+This program simulates a hardware device called "The Muse". This gizmo 
+contains a 5-bit counter, a divide-by-3 and a divide-by-6 stage, and a 
+32 bit shift register. There is a 5-bit DAC that converts a 4-bit word, 
+0..15, to the notes C..HD#. The output of the DAC is amplified and feeds 
+a speaker.
+
+The input of the shift register is the XOR of 4 inputs: W, X, Y and Z. 
+The input of the DAC is a weighted sum: K + L*2 + M*4 +N*8.
+
+ W, X, Y, Z, K, L, M and N could be:
+
+	OFF				the constant 0
+	ON				the constant 1		
+	C-1/2, C1, C2, C4 or C8		outputs of the 5-bit counter
+	C3	 			output of the divide-by-3 stage
+	C6	 			output of the divide-by-6 stage
+	B1, B2....B32			outputs of the 32-bit shiftregister
+
+If you're a hardware oriented programmer, you will know that feeding back
+outputs of a shiftregister to its input may produce very long random 
+bit-patterns. If you do it right.
+
+Using only the counter outputs to feed the DAC will produce a (maximally 16
+notes long) regular pattern. Everything in between is possible..
+
+The user interface of this little program is simple:
+
+X IS OFF	"X" now produces a 0 when called
+M IS C2		"M" is now "connected" to the Q4 output of the 5-bit counter
+
+In this way  W, X, Y, Z, K, L, M and N  may be revectored.
+
+ENDDOC
+
+VARIABLE octaves
+VARIABLE hulpC3
+VARIABLE hulpC6
+VARIABLE c-1/2
+VARIABLE c1
+VARIABLE c2
+VARIABLE c3
+VARIABLE c4
+VARIABLE c6
+VARIABLE c8
+
+CREATE shiftregister 0 , 0 ,
+
+: ?on		0= 0= 1 AND ;				\ n --- 0 | 1
+: C-1/2		c-1/2 @ ;
+: C1		c1    @ ;
+: C2		c2    @ ;
+: C3		c3    @ ;
+: C4		c4    @ ;
+: C6		c6    @ ;
+: C8		c8    @ ;
+
+: NEW-OCTAVES
+
+		octaves @ 1 + $1F AND octaves !
+		octaves @ 1   AND ?on c-1/2 !
+		octaves @ 2   AND ?on c1 !  
+		octaves @ 4   AND ?on c2 !
+		octaves @ 8   AND ?on c4 !
+		octaves @ $10 AND ?on c8 !
+		hulpC3 @ 1 +  DUP 3 = 1 AND c3 !
+		   3 MOD hulpC3	!			\ width = 1 clock!
+		hulpC6 @ 1 +  DUP 6 = 1 AND c6 !	\ width : 1 clock
+		   6 MOD hulpC6 ! ;
+
+: TEST-NEW	( A test word. Can be left out after debugging )
+
+		0 octaves !  0 hulpC3 !  0 hulpC6 !
+		BEGIN	NEW-OCTAVES 
+			CR octaves @ . SPACE 
+			   hulpC3  @ . SPACE 
+			   hulpC6  @ .
+			CR c8 @ . c4 @ . c2 @ . c1 @ . c-1/2 @ .  SPACE 
+			   c3 @ . c6 @ . 
+			KEY ^Z =
+		UNTIL ;
+
+: OFF		0 ;
+: ON		1 ;
+
+: SHIFTED-BIT	CREATE	1 0 ROT  			\ bit# ---   #bitname#
+			?DUP IF	0 DO  D2* LOOP
+			  ENDIF
+			, ,
+		 DOES   R> $7FFF AND
+			2@ >R shiftregister 2@ >R AND 	\ --- 0 | 1
+			R> R> AND 
+			OR ?on ;
+
+ 0 SHIFTED-BIT B1	 1 SHIFTED-BIT B2	 2 SHIFTED-BIT B3
+ 3 SHIFTED-BIT B4	 4 SHIFTED-BIT B5	 5 SHIFTED-BIT B6
+ 6 SHIFTED-BIT B7	 7 SHIFTED-BIT B8 	 8 SHIFTED-BIT B9
+ 9 SHIFTED-BIT B10	10 SHIFTED-BIT B11	11 SHIFTED-BIT B12
+12 SHIFTED-BIT B13	13 SHIFTED-BIT B14	14 SHIFTED-BIT B15
+15 SHIFTED-BIT B16	16 SHIFTED-BIT B17	17 SHIFTED-BIT B18
+18 SHIFTED-BIT B19	19 SHIFTED-BIT B20	20 SHIFTED-BIT B21
+21 SHIFTED-BIT B22	22 SHIFTED-BIT B23	23 SHIFTED-BIT B24
+24 SHIFTED-BIT B25	25 SHIFTED-BIT B26	26 SHIFTED-BIT B27
+27 SHIFTED-BIT B28	28 SHIFTED-BIT B29	29 SHIFTED-BIT B30
+30 SHIFTED-BIT B31	31 SHIFTED-BIT B32
+
+VARIABLE W	VARIABLE K
+VARIABLE X	VARIABLE L
+VARIABLE Y	VARIABLE M
+VARIABLE Z	VARIABLE N
+
+VARIABLE SCALE
+
+: ww	W @ EXECUTE ;	: aa	K @ EXECUTE ;
+: xx	X @ EXECUTE ;	: bb	L @ EXECUTE ;
+: yy	Y @ EXECUTE ;	: cc	M @ EXECUTE ;
+: zz	Z @ EXECUTE ;	: dd	N @ EXECUTE ;
+
+: scale 	SCALE @ EXECUTE ;
+
+: SCALE:	CREATE  $10 0 DO ' , LOOP
+		  DOES  $0F AND 
+			R> $7FFF AND + 	
+			@ EXECUTE ;
+ 
+SCALE: MAJOR	LA  LB  C   D   E   F   G   A   B   HC  HD  HE  HF  HG  HA  HB
+SCALE: MINOR	LG# LA# C   C#  D#  F   F#  G#  A#  C   HC# HD# HF  HF# HG# HA#
+SCALE: 2MAJOR	LA  LA  LB  LB  C   C   D   D   E   E   F   F   G   G   A   A
+
+: SHIFT		NEW-OCTAVES
+		shiftregister 2@ D2* SWAP 
+		ww xx + yy + zz + 1 AND  OR SWAP
+		shiftregister 2!
+		aa  bb 2* +  cc 2* 2* +  dd 2* 2* 2* + 
+		scale ;
+
+: IS		' SWAP ! ;
+
+		SCALE IS 2MAJOR
+	
+		W IS C-1/2	K IS C1
+		X IS C3		L IS B10
+		Y IS B7		M IS B9
+		Z IS B16	N IS B8
+
+		1/4 	-2 octave ! 	BASS
+
+: ?KEY		0 
+		#1000 FOR RX 0= OR 
+		     NEXT ;			\ --- bool
+
+: MUSE		BEGIN	SHIFT  
+			?KEY
+		UNTIL ;
+
+: .HELP	CR ."  **************** ---- commands ---- **************** " CR
+	CR ."  W | X | Y | Z | K | L | M | N     IS "
+	CR ."  OFF | ON | C-1/2 | C1 | C2 | C3 | C4 | C6 | C8 or B1..B32"
+	CR ."  SCALE IS  MAJOR | MINOR | 2MAJOR"
+	CR ."  +OCT | -OCT " 
+	CR ."  BASS | GUITAR | MARIMBA | SINE | TRIANGLE | SAWTOOTH | SQUARE | PULSE"
+	CR ."  ( type ) MUSE ( to start )" CR ;
+
+.HELP
+
+			\ (* End of information *) /
+

@@ -1,0 +1,22 @@
+?REM -work
+
+CREATE sine #256 2* ALLOT
+
+: INIT.SINE	#65 0 DO    dsintable  
+				I #360 #256 */   
+			        4 * + @ 
+			    $7FFF OVER - >S  $8000 +
+			    DUP     I    2*  sine + !
+			       #128 I -  2*  sine + !
+			    S  #128 I +  2*  sine + !
+			    S> #256 I -  2*  sine + !
+		      LOOP ;
+
+: .SINES
+	BASE >S DECIMAL
+	#256 0 DO
+		I #8 MOD 0= IF CR ENDIF
+		sine I 2* + @ 6 U.R ."  , "
+	      LOOP
+	S> TO BASE ;
+

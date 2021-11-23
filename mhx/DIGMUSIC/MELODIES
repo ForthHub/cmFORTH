@@ -1,0 +1,515 @@
+		\ *****	    M E L O D I E S	***** /
+
+		?DEF CIS 0= IFTRUE LOADF wavgen
+			    IFEND
+
+	    440HZ DUP	NOTE A
+	+HALFSTEP DUP	NOTE BES
+	+HALFSTEP DUP	NOTE B
+	+HALFSTEP DUP	NOTE C
+	+HALFSTEP DUP	NOTE CIS
+	+HALFSTEP DUP	NOTE D
+	+HALFSTEP DUP	NOTE ES
+	+HALFSTEP DUP	NOTE E
+	+HALFSTEP DUP	NOTE F
+	+HALFSTEP DUP	NOTE FIS
+	+HALFSTEP DUP	NOTE G
+	+HALFSTEP 	NOTE GIS
+
+: .(	$4000 &) OR WORD TYPE ;		\ No COUNT needed !
+
+	CR .( Reclame deun : DP = ) HERE H. .( words)
+
+: +GAMME      A B CIS D E FIS GIS +OCT ;
+: -GAMME -OCT GIS FIS E D CIS B A      ;
+
+: GAMMES DUP
+	 0 DO +GAMME LOOP
+	 A
+	 0 DO -GAMME LOOP ;
+
+: REKLAME
+	3 /32 F +OCT BES -OCT	    \ C1 F1
+	1 /32 G +OCT A	 -OCT G	    \ D1 E1 D1
+	1 /16 F			    \ C1
+	1 /32 ES		    \ BS1
+	3 /32 F
+	1 /32 BES C  D		    \ F0 G0 A1
+	1 /4  F			    \ C1
+	;
+
+: VADER-JACOB 1 /8
+	C D E C
+	C D E C
+	E F 1 /4 G 1 /8
+	E F 1 /4 G 1 /16
+	G +OCT A -OCT G F 1 /8 E C 1 /16
+	G +OCT A -OCT G F 1 /8 E C 1 /8
+	C -OCT G 1 /4 +OCT C 1 /8
+	C -OCT G 1 /4 +OCT C ;
+
+: JACOBS 0 DO VADER-JACOB LOOP ;
+
+: -VLOOI
+	1 /16 ES CIS
+	   1 /8	   -OCT FIS +OCT FIS FIS
+	1 /16 ES CIS
+	   1 /8	   -OCT FIS +OCT FIS FIS
+
+	1 /16 ES CIS
+	   1 /8	   -OCT FIS +OCT FIS
+		   -OCT ES  +OCT FIS
+		   -OCT CIS +OCT F F
+
+	1 /16 ES CIS
+	   1 /8	   -OCT CIS +OCT F F
+	1 /16 ES CIS
+	   1 /8	   -OCT CIS +OCT F F
+
+	1 /16 ES CIS
+	   1 /8	   -OCT CIS +OCT F
+		   -OCT ES  +OCT F
+		   -OCT FIS +OCT FIS FIS ;
+
+: +VLOOI
+	1 /16 ES CIS
+	   1 /8	   +OCT BES -OCT FIS FIS
+	1 /16 ES CIS
+	   1 /8	   +OCT BES -OCT FIS FIS
+
+	1 /16 ES CIS
+	   1 /8	   +OCT BES -OCT FIS
+		   +OCT CIS -OCT FIS
+		   +OCT ES  -OCT F F
+
+	1 /16 ES CIS
+	   1 /8	   +OCT ES  -OCT F F
+	1 /16 ES CIS
+	   1 /8	   +OCT ES  -OCT F F
+
+	1 /16 ES CIS
+	   1 /8	   +OCT ES  -OCT F
+		   +OCT CIS -OCT F
+		   +OCT BES -OCT FIS FIS ;
+
+: GEVLOOID
+	1 /24 CIS
+	1 /24  ES CIS
+	1 /8 FIS FIS  ES  ES CIS F
+	1 /4 F
+	1 /8 F	 F    ES F   FIS FIS
+	1 /4 FIS
+	1 /24 CIS
+	1 /24  ES CIS
+	1 /8 FIS FIS  ES  ES CIS F
+	1 /4 F
+	1 /8 F CIS ES F
+	2 /4 FIS -OCT
+	     FIS +OCT ;
+
+: VLOOIENMARS
+	-VLOOI
+	+VLOOI
+	-VLOOI
+	GEVLOOID ;
+
+	CR .( Music Box at DP = ) HERE H. .( words)
+
+\ *****	  THE MUSIC BOX DANCER	 ***** /
+
+: MUSICBOX
+	6 OCT
+
+	1 /8 C
+
+	C -OCT G +OCT C E C E G C
+
+	+OCT C B A 5 /8 -OCT G
+
+	1 /8 G F D B -OCT G +OCT B D F
+
+
+	E C +OCT A -OCT 3 /8 G 1 /8 PAUSE C
+
+	C -OCT G +OCT C E C E G C
+
+	+OCT C B A 5 /8 -OCT G
+
+
+	1 /8 G F D B -OCT G +OCT B D B
+
+	C -OCT G +OCT E 5 /8 C
+
+	+OCT 1 /8 C A -OCT F C A C F +OCT A
+
+
+	-OCT G C +OCT A -OCT 5 /8 G
+
+	1 /8 G F D B -OCT G +OCT B D F
+
+	E C +OCT A -OCT 5 /8 G
+
+
+
+	+OCT 1 /8 C A -OCT F C A C F +OCT A
+
+	-OCT G C +OCT A -OCT 5 /8 G
+
+	1 /8 G F D B -OCT G +OCT B D B
+
+
+	C -OCT G +OCT E 3 /8 C 1 /8 PAUSE C
+
+	C -OCT G +OCT C E C E G C
+
+	+OCT C B A 5 /8 -OCT G
+
+
+	1 /8 G F D B -OCT G +OCT B D F
+
+	E C +OCT A -OCT 3 /8 G 1 /8 PAUSE C
+
+	C -OCT G +OCT C E C E G C
+
+
+	+OCT C B A -OCT 5 /8 G
+
+	1 /8 G F D B -OCT G +OCT B D B
+
+	C -OCT G +OCT E 3 /8 C	;
+
+\ *****	     THE ENTERTAINER	  ***** /
+
+	CR .( Entertainer : DP = ) HERE H. .( words)
+
+: INTRO ANDANTE VIVACE 6 OCT
+	1 /16 D E C 1 /8 A 1 /16 B 1 /8 -OCT G
+	1 /16 D E C 1 /8 A 1 /16 B 1 /8 -OCT G
+	1 /16 D E C 1 /8 A 1 /16 B A -OCT GIS
+	1 /8  G PAUSE 5 OCT G 1 /16 4 OCT D ES ;
+
+: M1	1 /16 E 1 /8 +OCT C -OCT
+	1 /16 E 1 /8 +OCT C -OCT
+	1 /16 E 3 /8 +OCT C +OCT
+
+	1 /16  C D ES
+
+	E C D 1 /8 E 1 /16 B 1 /8 D
+
+	3 /8 C	 1 /16 4 OCT D ES
+
+	1 /16 E 1 /8 +OCT C -OCT
+	   1 /16 E 1 /8	 +OCT C -OCT
+	   1 /16 E 7 /16 +OCT C +OCT
+
+	1 /16  A -OCT G
+
+	FIS +OCT A C 1 /8 E 1 /16 D C A
+
+	3 /8 D	 1 /16 3 OCT D ES
+
+	1 /16 E 1 /8 +OCT C -OCT
+	   1 /16 E 1 /8 +OCT C -OCT
+	   1 /16 E 3 /8 +OCT C +OCT
+
+	1 /16  C D ES
+
+	E C D 1 /8 E 1 /16 B 1 /8 D
+
+	3 /8 C 1 /16 C D
+
+	E C D 1 /8 E 1 /16 C D C
+
+	E C D 1 /8 E 1 /16 C D C
+
+	E C D 1 /8 E 1 /16 B 1 /8 D ;
+
+: M2	5 OCT	 1 /16 E F FIS
+
+	1 /8 G +OCT 1 /16 A -OCT 1 /8 G 1 /16 E F FIS
+
+	1 /8 G +OCT 1 /16 A -OCT 1 /8 G 1 /16 E C -OCT G +OCT
+
+	A B C D E D C D
+
+	-OCT G +OCT E F G +OCT A -OCT G E F
+
+	1 /8 G +OCT 1 /16 A -OCT 1 /8 G 1 /16 E F FIS
+
+	1 /8 G +OCT 1 /16 A -OCT 1 /8 G 1 /16 G +OCT A BES
+
+	B 1 /8 B B 1 /16 A -OCT FIS D
+
+	5 /16 G 1 /16 E F FIS
+
+	1 /8 G +OCT 1 /16 A -OCT 1 /8 G 1 /16 E F FIS
+
+	1 /8 G +OCT 1 /16 A -OCT 1 /8 G 1 /16 E C -OCT G +OCT
+
+	A B C D E D C D
+
+	5 /16 C -OCT 1 /16 G FIS G
+
+	+OCT 1 /8 C 1 /16 A 1 /8 C 1 /16 A C A
+
+	-OCT G +OCT C E 1 /8 G 1 /16 E C -OCT G +OCT
+
+	1 /8 A C 1 /16 E 1 /8 D 3 /8 C ;
+
+: M3	6 OCT
+	1 /16 A -OCT GIS +OCT 2 /8 A 1 /8 C
+
+	D -OCT 1 /16 BES A BES C 1 /8 D
+
+	1 /16 F E 2 /8 F 1 /8 +OCT A
+
+	BES 1 /16 -OCT -OCT G FIS G +OCT A BES G
+
+	1 /8 D 1 /16 G 1 /8 D 1 /16 G 1 /8 D
+
+	1 /4 C F
+
+	1 /16 E GIS +OCT B 1 /8 E 1 /16 D B C
+
+	1 /4 A BES
+
+	1 /16 A -OCT GIS +OCT 2 /8 A 1 /8 C
+
+	D -OCT 1 /16 BES A BES C 1 /8 D
+
+	1 /16 F E 2 /8 F 1 /8 +OCT A
+
+	BES 1 /16 -OCT -OCT G FIS G +OCT A BES G
+
+	1 /8 D 1 /16 G 1 /8 D 1 /16 G 1 /8 D
+
+	1 /4 C 3 /16 F 1 /16 F
+
+	+OCT A 1 /8 C -OCT G 1 /16 C D E
+
+	1 /8 F ;
+
+: M4	4 OCT
+
+	1 /8 F 1 /16 E 1 /8 F 1 /16 E 1 /8 F
+
+	+OCT 1 /16 PAUSE A D A C D C A
+
+	-OCT 1 /8 G 1 /16 FIS 1 /8 G 1 /16 FIS 1 /8 G
+
+	+OCT 1 /16 PAUSE C E C D E D C
+
+	1 /8 D 1 /16 CIS 1 /8 D 1 /16 CIS 1 /8 D
+
+	1 /16 PAUSE F +OCT A -OCT F G +OCT A -OCT G F
+
+	+OCT C C 1 /4 C 1 /8 A
+
+	-OCT G -OCT 1 /16 G G 1 /8 G G
+
+	F 1 /16 E 1 /8 F 1 /16 E 1 /8 F
+
+	+OCT 1 /16 PAUSE A D A C D C A
+
+	-OCT 1 /8 G 1 /16 FIS 1 /8 G 1 /16 FIS 1 /8 G
+
+	+OCT 1 /16 PAUSE C E C D E D C
+
+	A -OCT GIS +OCT A 1 /8 G F 1 /16 C
+
+	E ES E 1 /8 +OCT A 1 /16 C -OCT G E
+
+	1 /8 C C 1 /16 E 1 /8 D ;
+
+: EN1	INTRO
+
+	M1
+	3 /8 C	1 /16 4 OCT D ES
+
+	M1
+	5 /16 C ;
+
+: EN2	M2
+
+	M2	1 /16 4 OCT D ES ;
+
+: EN3	M1 1 /4 C 1 /8 C PAUSE ;
+
+: EN4	M3 1 /16 B C D E F G
+
+	M3 PAUSE +OCT F ;
+
+: EN5	-OCT 1 /8 C 1 /16 A 1 /8 C 1 /16 A C A
+
+	-OCT G +OCT C E 1 /8 G 1 /16 E C -OCT G +OCT
+
+	1 /8 A C 1 /16 E 1 /8 D 5 /16 C +OCT 1 /8 C PAUSE
+
+	M4 3 /16 C -OCT 1 /16 G G 1 /8 G G
+
+	M4 5 /16 C +OCT 1 /8 C PAUSE ;
+
+: ENTERTAINER
+
+	EN1 EN2 EN3 EN4 EN5 ;
+
+	CR .( Wind mills : DP = ) HERE H. .( words)
+
+\ ***** WINDMILLS OF YOUR MIND ***** /
+
+: THEME
+	5 OCT
+
+	1 /4 E 1 /8 B B C C B B
+
+	E E B B G G FIS E
+
+	1 /4 FIS 1 /8 B B C C B B
+
+	FIS FIS B B +OCT A A -OCT G FIS
+
+	1 /4 G ;
+
+: W1	THEME
+
+		1 /8 E E FIS FIS E E
+
+	+OCT B B -OCT E E +OCT D D C B
+
+	1 /4 C -OCT 1 /8 D D E E D D
+
+	+OCT A A -OCT D D +OCT C C B A
+
+	1 /4 B -OCT 1 /8 C C D D C C
+
+	G G C C +OCT B B A -OCT G
+
+	+OCT 1 /4 A -OCT 1 /8 B B C C B B
+
+	FIS FIS B B +OCT A A -OCT G FIS
+
+	1 /4 G 1 /8 BES BES G G FIS E
+
+	1 /4 FIS 1 /8 B B FIS FIS E ES ;
+
+: W2	1 /4 E 1 /8 B B C C B B
+
+	E E B B G G FIS G
+
+	+OCT 1 /4 A 1 /8 -OCT D D E E D D
+
+	+OCT A A -OCT D D FIS FIS G +OCT A
+
+      \ 1 /4 B -OCT 1 /8 G G +OCT A A A -OCT G
+	1 /4 B -OCT 1 /8 G G +OCT A A	-OCT G G
+
+	+OCT D D -OCT G G +OCT F F E D
+
+	1 /4 E -OCT 1 /8 FIS FIS G G FIS FIS
+
+	+OCT CIS CIS -OCT FIS FIS +OCT E E D CIS
+
+	1 /4 D -OCT 1 /8 FIS FIS +OCT B B A A
+
+	B B -OCT E E GIS GIS +OCT A B
+
+	1 /4 C -OCT 1 /8 D D E E D D
+
+	+OCT A A -OCT D D FIS FIS G +OCT A
+
+	1 /4 B -OCT 1 /8 C C D D C C
+
+	G G C C +OCT B B A -OCT G
+
+	RITARDANDO
+
+	1 /4 +OCT A -OCT 1 /8 G G FIS FIS E E
+
+	G G FIS FIS E E ES ES
+
+	A.TEMPO THEME
+
+	       1 /8 BES BES G G FIS E
+
+	POCO RITARDANDO
+
+	1 /4 G 1 /8 B B G G FIS E
+
+	1 /4 FIS 1 /8 B B FIS FIS E ES
+
+	1 /4 E +OCT B 5 /16 E
+
+	A.TEMPO ;
+
+: WINDMILLS
+	ALLEGRO 5 OCT
+
+	3 /8 E 1 /8 E 3 /8 E 1 /8 E
+
+	3 /8 E 1 /8 E 1 /4 FIS	  B
+
+	3 /8 E 1 /8 E 3 /8 E 1 /8 E
+
+	3 /8 E 1 /8 E 1 /4 -OCT B B
+
+	W1 W1 W2 ;
+
+	CR .( Klokke Roeland : DP = ) HERE H. .( words)
+
+\ *****	    KLOKKE ROELAND	***** /
+
+: KLOKKE.ROELAND
+
+	ANDANTE 6 OCT
+
+	1 /4 A 1 /8 B A -OCT 1 /2 FIS
+
+	1 /4 FIS 1 /8 G	 FIS 1 /2 D
+
+	1 /4 D 1 /8 E FIS E +OCT A B CIS
+
+
+	1 /2 B A
+
+	1 /4 A 1 /8 B A -OCT 1 /2 FIS
+
+	1 /4 FIS 1 /8 G FIS 1 /2 D
+
+
+	1 /4 D 1 /8 E FIS E +OCT A B CIS
+
+	1 /2 B A
+
+	1 /4 A 1 /8 -OCT G E 1 /2 CIS
+
+
+	+OCT 1 /4 B 1 /8 A -OCT FIS D D D E
+
+	1 /4 F F E D
+
+	+OCT 1 /2 A A
+
+	VIVACE
+
+	1 /4 -OCT FIS 3 /16 FIS 1 /16 G 1 /2 +OCT A
+
+
+
+	1 /4 B 3 /16 A -OCT 1 /16 GIS +OCT 1 /4 A -OCT FIS
+
+	E 3 /16 E 1 /16 FIS 1 /2 G
+
+	1 /4 +OCT B 3 /16 A -OCT 1 /16 GIS +OCT 1 /4 A -OCT FIS
+
+
+	FIS 3 /16 FIS 1 /16 G 1 /4 +OCT A -OCT FIS
+
+	G +OCT A 1 /2 B
+
+	1 /4 B 1 /8 CIS D  1 /4 A A
+
+	B CIS 1 /2 D ;
+
+
+		\ ******    EINDE MELODIEEN    ****** /
+

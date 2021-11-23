@@ -1,0 +1,72 @@
+	\ (* ******************************************************* *) /
+	\ (* Complex math package for NC4000.	     MH, June 7 1987 *) /
+	\ (*	Joe Barnhart, Dr Dobb's Journal, September 1984	     *) /
+	\ (* May 15 1989:  Source assumes fixed U*+ M*+ and the rest *) /
+	\ (* ******************************************************* *) /
+
+		FORTH
+		REMEMBER  -COMPLEX
+
+: X@		2@ ;	\ addr --- x
+: X!		2! ;	\ x,addr ---
+
+: XVARIABLE	CREATE	 0 , 0 ,		\ ---
+		DOES	 R>  $7FFF AND ;	\ --- 'struc
+
+		\ ERASE and ALLOT work with cells, not bytes
+		\ Mark non-standard DOES, mask-off carry-bit
+
+: XCONSTANT	CREATE	HERE  2 ALLOT  X!	\ x ---
+		DOES	R> $7FFF AND   X@ ;	\ --- x
+
+: XDUP		2DUP  ;				\ x --- x, x
+: XSWAP		2SWAP ;				\ x1, x2 --- x2, x1
+: XDROP		2DROP ;				\ x ---
+: XOVER		2OVER ;				\ x1, x2 --- x1, x2, x1
+: X2DUP		2OVER  2OVER ;			\ x1, x2 --- x1, x2, x1, x2
+
+: X+		ROT	 + >R  +  R> ;		\ x1, x2 --- xsum
+: X-		ROT SWAP - >R  -  R> ;		\ x1, x2 --- xdif
+
+: X2/		2/ SWAP 2/ SWAP ;		\ x --- x/2
+
+: |X|^2		DUP M* 				\ x --- dmag_x**2
+		ROT DUP M*  
+		D+ ;
+
+: |X|		|X|^2  SQRT ;			\ x --- mag_x
+
+: X'		SWAP NEGATE SWAP ;		\ x --- x_conjugate
+
+: X0=		0= SWAP 0= AND ;		\ x --- t/f
+
+: X*		>R  X2DUP			\ x1, x2, n --- x1*x2/n
+		 ROT R@ */	\ real part =
+		-ROT R@ */ -	\ re1*re2 - im1*im2
+		6 I!		\ save partial result
+		-ROT R@ */	\ re2*im1
+		-ROT R> */ +	\ + re1*im2
+		6 I@ ;		\ imag, real
+
+		\ The SR register (6) is used as a scratchpad
+
+\			**** WARNING ****
+
+\	{ */ } doesn't work properly for odd args.
+\	This means that vectors x1, x2 must have even components.
+\	Bug fixed in GOODIES, May 15 1989.
+
+: X*!		OVER >R >R		\ 'x1, 'x2, n --- x2 <-- x2*x1/n
+		X@  ROT X@  R> X*	\ x1*x2/n
+		R>  X! ;
+
+: X/		>R XSWAP XOVER			\ x1, x2, n --- n*x1/x2
+		X' R@ X*			\ x1*x2'
+		XSWAP |X| DUP  R@  */		\ sqr|x2|
+		SWAP OVER R@ SWAP  */		\ real part
+		-ROT R> SWAP  */ SWAP ;		\ imag part
+
+\	Same problem here: Now even the scaling factor had to be EVEN!!!
+
+			\ (* End of Source *) /
+

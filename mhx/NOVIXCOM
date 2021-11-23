@@ -1,0 +1,231 @@
+\ (* ****************************************************************** *) /
+\ (*   Communications program for the NOVIX.	  MH 30 April 1987	*) /
+\ (* ****************************************************************** *) /
+\ (* LC: Modified for Fysforth: October	 18th, 19th, 20th, 21st 1987	*) /
+\ (* LC: Modified for F-4TH: October 6th, 1988				*) /
+\ (* LC: Mouse compatibility: November 30th, 1988			*) /
+\ (* LC: Error in deallocating : May 15th 1989  Can't fix it !		*) /
+\ (* ****************************************************************** *) /
+
+		ONLY FORTH DEFINITIONS
+
+?DEF LINE.S 0=	IFTRUE	LOAD \COMS\RS-232I2 ( 1 Kbyte buffer )
+		IFEND
+?DEF ASSEMBLER  IFTRUE  ASSEMBLER REMOVE-ASM FORTH
+		IFEND
+
+     REVISION -novix "ฤฤฤ Novix Communications	  Vsn 2.10 ฤฤฤ"
+
+
+HEX	FALSE VALUE	cr?		\ end-of-line delimiter
+	FALSE VALUE	cstk^		\ pointer in c(ount)stack
+
+ $1B	=:	Esc
+ $03	=:	Breq			\ Novix : block I/O
+ $04	=:	Name			\	: name-of-file follows
+ $05	=:	Lreq			\	: line I/O
+$400	=:	b/scr			\ bytes per Forth screen
+
+	CREATE handle$	TEXT% 000.BLK% 0 C,
+					\ access blocks with ###.blk
+
+	CREATE	filename$  $42 ALLOT	\ line-based transfer
+		filename$  $42 ERASE
+
+	CREATE	EOL$	4 C, BL C, &| C, BL C, $0D C,
+
+		\ to send at line- but NOT file-end. ("|" is a NOVIX word)
+
+	CREATE	cstack	8 2* ALLOT	\ bytecounts of open blocks, neg if ^Z
+		cstack	8 2* ERASE	\ 8 open files (?)
+
+: >count	cstk^ 1+ 7 AND		\ # ---
+		DUP TO cstk^
+		2* cstack + ! ;
+
+: 'count	cstk^ 2* cstack + ;	\ --- addr
+
+: count?	'count	@ ;		\ --- #
+
+: count>	count?			\ --- #
+		cstk^ 1- 7 AND
+		TO cstk^ ;
+
+: 1count+!	1 'count +! ;
+
+: ?V24		GETBYTE? ;		\ --- flag
+
+: V24KEY	GETBYTE	 ;		\ --- byte
+
+: EMITTY	DOCASE ^M CASE CR	\ char ---
+		  ELSE ^J CASE
+		  ELSE ^G CASE BELL
+		  ELSE ^H CASE ^H (EMIT)
+		  ELSE	  (EMIT2)
+		ENDCASE ;
+
+
+DOC
+(*	      FALSE VALUE ?DEBUG
+
+: debug		?DEBUG			\ byte ---
+		   IF	DOCASE ^M CASE	." ^M"
+			  ELSE ^J CASE	." ^J"
+			  ELSE ^Z CASE	." ^Z"
+			  ELSE		EMIT
+			ENDCASE
+		ENDIF ;			\ useful for debugging filetransfers
+*)
+ENDDOC
+
+: V24EMIT	( DUP debug ) PUTBYTE ; \ byte ---
+
+					\ ..but it does slow down matters.
+
+: PURGE		BEGIN	?V24
+		WHILE	V24KEY DROP
+		REPEAT	;
+
+: FILLERS    0	?DO	BL V24EMIT	\ # ---
+			1count+!
+		LOOP ;			\ send filler characters
+
+: DO-EOS?	cr? IF	^M V24EMIT  count> DROP		\ Done.
+		  ELSE	b/scr count?  - FILLERS
+			count>	DROP  -1 >count		\ EndOfFile ON
+		 ENDIF ;
+
+: DO-EOL?	cr? IF	EOL$ COUNT 0
+			DO   COUNT V24EMIT
+			LOOP DROP
+		 ENDIF ;		\ append " | "+<cr> if in textmode
+					\ and not end-of-file
+
+: XMITLINE	cstk^			\ any files open ?
+	   IF	ptr@
+		BEGIN	LCOUNT
+			DUP ^J <>
+		WHILE	DUP ^M <>
+		WHILE	DUP ^Z <>
+		WHILE	DUP ^I = IF DROP BL
+			      ENDIF V24EMIT 1count+!
+		REPEAT
+	      ^Z = IF	( address ) 2DROP
+			DO-EOS? ( pad with spaces, or send <cr> )
+			deallocate
+		 ELSE	LCOUNT  ^Z <> IF ( <lf> ? ) DO-EOL? ptr!
+				    ELSE 2DROP DO-EOS? deallocate
+				   ENDIF
+		ENDIF		\ strip off <cr><lf>, interpret <eof> and <tab>
+	 ELSE	^M V24EMIT	\ probably a "\" before ^Z (no <cr><lf>)
+	ENDIF ;
+
+: BUILD.SCR#	BASE >S DECIMAL \ scr# --- addr
+		0 <#  # # #  #>	 DROP
+		S> TO BASE
+		handle$ 3 CMOVE
+		handle$ ;
+
+: PREPARE	handle? /BYTES 2DUP allocate	\ ask a buffer
+		buffer? 2SWAP read pophandle	\ read file
+		0 >count ;
+
+: SEND		PREPARE
+		BEGIN	count? 0< 0=
+		WHILE	XMITLINE
+		REPEAT	count> DROP ; 		\ send everything in one jolt
+
+: SEND.SCREEN	BUILD.SCR#			\ scr# ---
+		open.handle +ERR? >H		\ open the file
+		0TO cr?
+		SEND ;
+
+: UPLOAD	CR ." Block to upload ? " QUERY
+		pushhandle
+		0TO cr?
+		SEND ;
+
+: OPENIT	filename$ $40 ERASE
+		$40 0	DO	V24KEY DUP filename$ I + C!
+			WHILE
+			LOOP
+		filename$ open.handle +ERR? >H	\ open the file
+		PREPARE
+		TRUE TO cr? ;
+
+: DOWNLOAD	BUILD.SCR#			\ screen# ---
+		open.handle +ERR? >H		\ open the file
+		handle? b/scr 0	  allocate	\ ask a buffer
+		b/scr 0 DO	V24KEY
+				buffer? DROP I LC!
+			LOOP			\ put data in buffer
+		buffer? b/scr 0	 write		\ write it out
+		pophandle   deallocate ;	\ release buffer and handle
+
+: .HELP		?AT CUROFF HOME
+		CR ^I (EMIT) ." ษอออออออออออออออออออออออออออออออออออออป"
+		CR ^I (EMIT) ." บ <ESC>u ==>	      Upload	      บ"
+		CR ^I (EMIT) ." บ <ESC>d ==>	     Download	      บ"
+		CR ^I (EMIT) ." บ <ESC>s ==>	  Quit to Forth	      บ"
+		CR ^I (EMIT) ." วฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤฤถ"
+		CR ^I (EMIT) ." บ <ESC>f ==>  Execute Forth commands  บ"
+		CR ^I (EMIT) ." บ <ESC>? ==>   Type this help info.   บ"
+		CR ^I (EMIT) ." ศอออออออออออออออออออออออออออออออออออออผ"
+		AT CURON ;
+
+: ?ESC		KEY DUP				\ --- flag
+		DOCASE	&s CASE 0= CR ." Back in F-4TH again."
+		  ELSE	&d CASE DOWNLOAD
+		  ELSE	&u CASE UPLOAD
+		  ELSE	&f CASE	 ." FORTH> " QUERY CR INTERPRET
+		  ELSE	&? CASE .HELP
+		  ELSE		Esc V24EMIT   V24EMIT
+		ENDCASE ;
+
+: RESPOND	V24KEY >< V24KEY OR		\ --- screen#
+		DUP	ABS SWAP  0<
+		   IF	DOWNLOAD
+		 ELSE	SEND.SCREEN
+		ENDIF ;
+
+: ?SEND		?KEY IF KEY DUP			\ --- f?
+			Esc = IF  DROP	?ESC
+			    ELSE  V24EMIT TRUE
+			   ENDIF
+		   ELSE TRUE
+		  ENDIF ;
+
+: REQ?		DOCASE	Breq CASE RESPOND	\ # ---
+		  ELSE	Name CASE OPENIT	\ NOVIX sends filename to open
+		  ELSE	Lreq CASE XMITLINE	\ there must be a file open
+		  ELSE		  EMITTY	\ interpret <cr><lf><bs><bell>
+		ENDCASE ;
+
+: @ECHO		BEGIN	?V24
+		WHILE	V24KEY	REQ?
+		REPEAT ;
+
+		28K8BPS 8BITS 1STOP NOPARITY
+
+		\  The Master Control Word: NOVIX-IO
+
+
+TRUE VALUE once!
+
+: NOVIX-IO	3 MODEM.C PC!  RS-INIT.INT  PURGE
+		HOME CLS
+		once! IF 0 #24 AT ." Remove any RESPEEDER soft- or hardware!"
+			 FALSE TO once! HOME
+		   ENDIF
+		BEGIN	?SEND
+		WHILE	@ECHO
+		REPEAT
+		RS-EXIT ;
+
+		CR BLINK ." ** " BARE ." Type NX to start " BLINK ." **" BARE
+
+: NX		NOVIX-IO ;
+
+		\  @ECHO empties the receivebuffer before sending goes on
+
+			\ (* End Of Source *) /

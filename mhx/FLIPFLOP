@@ -1,0 +1,31 @@
+	\ (*	Input and output for NC4000	*) /
+
+: P@		0  9 I!		\ Mask
+		0 10 I!		\ Direction
+		0 11 I!		\ tristate
+		   9 I@ ;	\ ( --- # )
+
+: P!		0  9 I!		\ Mask
+	       -1 10 I!		\ Direction
+		0 11 I!		\ Tristate
+		   8 I! ;	\ ( # --- )
+
+: Zeros		FOR	0	\ ( n --- ) Push n zeros on stack
+		NEXT ;
+
+: Ones		FOR    -1	\ ( n --- ) Push n ones
+		NEXT ;
+
+: Flip-Flops	129	FOR	0 -1	\ Push alternate 0, 1
+			NEXT ;
+
+: Fast		256 TIMES 8 I! ;	\ Pump 256 words from stack to port
+
+: Fast-demo	FOR	Fast		\ ( n --- )
+		NEXT ;
+
+: Tell	." 'Flip-Flops -1 Fast-demo'  shows 4 seconds of square-waves. " ;
+
+CR CR Tell
+
+

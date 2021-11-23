@@ -1,0 +1,298 @@
+\ (* ****************************************************************** *) /
+\ (*									*) /
+\ (*	  E X T E N S I O N S  to make the NOVIX easier to use..	*) /
+\ (*	 	  Marcel Hendrix, October 20th 1987			*) /
+\ (* LC: 	May 8th 1989, added #xxxx (Values were impossible?)	*) /
+\ (*									*) /
+\ (* ****************************************************************** *) /
+
+
+HEX	  4020	CONSTANT BL
+
+: .DEC		BASE @ SWAP DECIMAL  .	BASE !	;	\ # ---
+: H.		BASE @ SWAP HEX	     .	BASE !	;	\ # ---
+
+
+FORTH		: ASCII		BL WORD 2 * 1 + C@ ;
+COMPILER	: ASCII		ASCII [COMPILE] LITERAL ;
+FORTH
+
+\ ****		Stack printing words
+
+: (U,)		<# BL HOLD ASCII , HOLD
+		   # # # # #> ;			\ # ---
+
+: (U.)		<# BL HOLD ASCII , HOLD
+		   #S #> ;			\ # ---
+
+: .S		    >R >R >R >R			\ Print upper 5 datastack items
+		CR  DUP (U.)
+		R>  DUP (U.)
+		R>  DUP (U.)
+		R>  DUP (U.)
+		R>  DUP	 U.
+		." --- " CR ;
+
+: .RS	BASE @	HEX				\ Print 5 return addresses
+		    R> R> R> R> R>
+		CR  DUP (U,)
+		>R  DUP (U,)
+		>R  DUP (U,)
+		>R  DUP (U,)
+		>R  DUP	 U.
+		>R
+		." --- " CR
+	BASE ! ;
+
+\ ****		Show internal registers
+
+: (.I)		CR 3	FOR  8 U.R	\ n1, n2, n3, n4 ---
+			NEXT ;
+
+DECIMAL
+: .I					\ Display NC4000 internal registers
+	CR	."        J       K       I       P   "
+			 2 I@	 1 I@	 0 I@	 256 /MOD  (.I)
+	CR	."            MD              SR      "
+			 7 I@	 6 I@	 5 I@	 4 I@	   (.I)
+	CR	."   B-Port    MASK     I/O   Tristate"
+			11 I@	10 I@	 9 I@	 8 I@	   (.I)
+	CR	."   X-Port    MASK     I/O   Tristate"
+			15 I@	14 I@	13 I@	12 I@	   (.I)
+	CR ;
+
+
+\	    The Whatever Concept. Forth Dimensions Vol. VI, no 2, p8
+\	(c)  Alden B. Long, 23 Pleasant Avenue, South Hamilton, Mass.
+\	    Adapted for NOVIX N4000 by Marcel Hendrix, April 30 1987
+
+FORTH DECIMAL
+
+: (HEX)		BASE @ >R		\ ( -- n[literal] ) Hex convert chars
+		ASCII 0 HERE 2 * 1 + C! \ '$' <- '0'
+		HERE HEX NUMBER		\ In its own name !
+		R>  BASE ! ;
+
+: (DEC)		BASE @ >R		\ ( -- n[literal] ) Dec convert chars
+		ASCII 0 HERE 2 * 1 + C! \ '#' <- '0'
+		HERE DECIMAL NUMBER	\ In its own name !
+		R>  BASE ! ;
+
+ 1 WIDTH !				\ big trick...
+
+: $XXXX		(HEX) ;			\ 4 digit number
+: $XXX		(HEX) ;			\ 3 digit number
+: $XX		(HEX) ;			\ 2 digit number
+: $X		(HEX) ;			\ 1 digit number
+
+: #XXXXX	(DEC) ;			\ 5 digit number
+: #XXXX		(DEC) ;			\ 4 digit number
+: #XXX		(DEC) ;			\ 3 digit number
+: #XX		(DEC) ;			\ 2 digit number
+: #X		(DEC) ;			\ 1 digit number
+
+: &X		HERE 1 + 2 * C@ ;	\ --- c[literal]
+
+		\ Convert printable, single ASCII characters
+
+: ^X		HERE 1 + 2 * C@
+		63 AND ;		\ --- c[literal]
+
+		\  Convert control characters, maybe illegal..
+ 31 WIDTH !
+
+COMPILER
+
+: [HEX]		(HEX) [COMPILE] LITERAL ;
+: [DEC]		(DEC) [COMPILE] LITERAL ;
+
+  1 WIDTH !
+
+: $XXXX		[COMPILE] [HEX] ;	\ 4 digit number
+: $XXX		[COMPILE] [HEX] ;	\ 3 digit number
+: $XX		[COMPILE] [HEX] ;	\ 2 digit number
+: $X		[COMPILE] [HEX] ;	\ 1 digit number
+
+: #XXXXX	[COMPILE] [DEC] ;	\ 5 digit number
+: #XXXX		[COMPILE] [DEC] ;	\ 4 digit number
+: #XXX		[COMPILE] [DEC] ;	\ 3 digit number
+: #XX		[COMPILE] [DEC] ;	\ 2 digit number
+: #X		[COMPILE] [DEC] ;	\ 1 digit number
+
+: &X		&X [COMPILE] LITERAL ;	\ ---
+		\ Convert printable, single ASCII characters
+
+: ^X		^X [COMPILE] LITERAL ;	\ ---
+		\  Convert control characters, could be illegal..
+
+  31 WIDTH !  FORTH
+
+		\ (******************************) /
+		\ (* IFTRUE   OTHERWISE   IFEND *) /
+		\ (* CR: Erwin Dondorp 1986	*) /
+		\ (* LC: MH July 1988  File/Dev	*) /
+		\ (******************************) /
+
+	VARIABLE (iftrue)	
+
+  $1003 CONSTANT (x)	\ CFA of EOL routine.
+
+: IFEND ;
+
+: OTHERWISE	RECURSIVE
+		BEGIN   1 -' IF DROP 0			\ search FORTH
+			   THEN
+			DUP (iftrue) @ = IF OTHERWISE
+				       THEN
+			DUP   (x)      = IF [COMPILE] \	\ EOL or EOT ?
+				       THEN
+			[ ' IFEND ] LITERAL =
+		UNTIL ;
+
+: IFTRUE						\ flag ---
+		0= IF	
+		    BEGIN   1 -' IF DROP 0
+			       THEN
+			    DUP  (iftrue) @ = IF  OTHERWISE
+					    THEN
+			    DUP (x) = IF [COMPILE] \ 	\ EOL or EOT ?
+				    THEN
+			    DUP  [ ' IFEND ] LITERAL =
+			    SWAP [ ' OTHERWISE ] LITERAL = OR
+		    UNTIL 
+		 THEN ; 
+
+' IFTRUE (iftrue) !
+
+: ?DEF		CONTEXT @ -' SWAP-DROP 0= ;
+
+			\ (**********************) /
+			\ (* The DOC construct  *) /
+			\ (* CR: PSD EVO	*) /
+			\ (* LC: MH July 1988	*) /
+			\ (**********************) /
+
+: ENDDOC ;	\ Use: Lift documentation text blocks from SOURCE-files
+
+: DOC		BEGIN	1 -'   IF DROP 0	\ not found?
+			     THEN
+			DUP (x)			\ EOL or EOT ?
+			     = IF [COMPILE] \	\ get a new line of input
+			     THEN
+			[ ' ENDDOC ] LITERAL =
+		UNTIL ;
+
+\ ****		double-length extensions
+
+: 2SWAP		( ROT >R   ROT R> )	\ d1, d2 -- d2, d1
+		>R SWAP	 R> SWAP	\ this is faster than ROT
+		>R
+		>R SWAP	 R> SWAP
+		R> ;
+
+: 2OVER		>R >R  2DUP		\ d1, d2 -- d1, d2, d1
+		R> R>  2SWAP ;
+
+OCTAL COMPILER
+	147301	uCODE R@	157701 uCODE  R>SWAP>R
+	104411  uCODE *'	102411 uCODE  *-
+	100011	uCODE D2/	100012 uCODE  D2*
+	104220	uCODE +c	102616 uCODE  S'
+DECIMAL FORTH
+
+: R@		R@  ;			\ --- n
+: R>SWAP>R	R>SWAP>R ;
+: D2/		D2/ ;			\ d --- d
+: D2*		D2* ;			\ d --- d
+: D+		>R  SWAP  >R		\ d1, d2 --- d
+		+   R> R> +c ;
+: SQRT		32768  6 I!		\ d --- n
+		    0  4 I!
+		D2*  14 TIMES S' 
+		DROP ;
+
+: -ROT		SWAP >R	 SWAP R> ;	\ n1, n2, n3 --- n3, n1, n2
+
+: DNEGATE	SWAP NEGATE 		\ d --- -d
+		SWAP -1 XOR 0 +c ;
+
+\ ****		Looping emulation ( bit slow..)
+
+FORTH  OCTAL
+
+: OR,		0 ?CODE !			\ addr, n ---
+		SWAP 7777 AND
+		OR , ;
+
+COMPILER
+
+: DEFER 	[COMPILE] [COMPILE] ;
+
+: >DO		SWAP 7777 AND			\ addr ---
+		130000 OR, ;
+
+: DO		107100 , 157201 , 157201 ,	\ SWAP >R >R
+		H @ 0 ?CODE ! ;			\ begin
+
+: LOOP		147321 ,  154401 , 100120 ,	\ R>  1+  DUP
+		147301 ,  152401 , 102023 ,	\ R@  1-  >
+		DEFER IF  140721 , 107020 ,	\ R>DROP DROP
+		DEFER ELSE	157201 ,	\ >R
+				DEFER >DO
+		DEFER THEN ;
+
+: +LOOP		147321 ,  104020 , 100120 ,	\ R>   + DUP
+		147301 ,  152401 , 102023 ,	\ R@ 1- >
+		DEFER IF  140721 , 107020 ,	\ R>DROP DROP
+		DEFER ELSE	157201 ,	\ >R
+				DEFER >DO
+		DEFER THEN ;
+
+: ENDIF		DEFER THEN ;
+
+FORTH : =: CONSTANT ;
+
+		\ (* Repair bugs in U*+ and M*+ *) /
+
+DECIMAL
+
+\ Doesn't work well, but FOR MY APPLICATIONS better than the systems.
+
+: U*+		DUP -2 AND			\ u, r , u --- ud
+		4 I!				\ MD I!
+		1 AND IF OVER + 
+		   ENDIF
+		14 TIMES *' ;
+
+\ : M*+		DUP -2 AND			\ n1, r , n2 --- d
+\		4 I!				\ MD I!
+\		1 AND IF OVER + ENDIF
+\		13 TIMES *' *- ;
+\ Doesn't work..
+
+: M*+		DUP >R ABS 			\ n1, 0 , n2 --- d
+		ROT DUP R> XOR >R ABS -ROT
+		U*+
+		R> 0< IF DNEGATE 
+		   ENDIF ;
+
+: M*		DUP 0< IF VNEGATE ENDIF		\ n1, n2 --- d
+		0 SWAP M*+ ;
+
+: */MOD		>R 0 SWAP U*+			\ u1, u2, u3 --- rem, quot
+		R> M/MOD
+		SWAP ;
+
+: */		>R M* R> M/ ;			\ n1, n2, u --- ratio
+
+: *		0 SWAP U*+			\ n1, n2 --- n
+		DROP ;				\ sure looks like UNSIGNED * ?
+
+\ : MSTARPLUS	>R OVER 6 I!  R@		\ n1, 0 , n2 --- d
+\		U*+
+\		6 I@ 0< IF   R@ - ENDIF		\ "6" is SQRT register
+\		R>   0< IF 6 I@ - ENDIF ;
+\ Doesn't work because of carry problem..
+
+		     \ (* End of Source *) /
+

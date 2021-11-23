@@ -1,0 +1,316 @@
+	\ (* ************************************************** *) /
+	\ (*							*) /
+	\ (* State Variable Filter Routines II, for percussion	*) /
+	\ (*							*) /
+	\ (* LC: December 27, 1988  	Simplified FILTER	*) /
+	\ (* LC: December 28, 1988	3 Drums			*) /
+	\ (* LC: December 29, 1988	Noise drum		*) /
+	\ (* LC: December 31, 1988	Non-linear drum		*) /
+	\ (* LC: May 15th, 1989         Modified for Novix	*) /
+	\ (* LC: May 15th, 1989  Uncovered */ bug, NOT FUNNY	*) /
+	\ (* ************************************************** *) /
+
+
+VARIABLE rnd	H rnd !
+
+FORTH DECIMAL
+
+: ?KEY	0 			\ --- boolean
+	#10000  FOR  RX 0= OR
+		NEXT ;
+
+: RANDOM			\ --- n
+	rnd @ #6927 #31421 U*+ 
+	DROP DUP rnd ! ;	
+
+: SET.DAC
+	$1D  13 I! ;		\ instruct X1 to listen, others not.
+				\ Needed because EMIT does $1E 13 I!
+
+: STROBE			\ Short negative pulse on X1 line
+	SET.DAC			\ Only once if no EMIT or KEY intervention
+	 0 12 I! 		\ 2 or 3 cycles ==> 500..750 ns
+	-1 12 I! ;
+
+: B>DAC				\ n ---		Assumes SET.DAC
+	8 I! 
+	0 12 I! -1 12 I! ;	\ STROBE expanded here for speed.
+
+
+	0 >RAM  H !		\ Application is LARGE
+
+
+VARIABLE bandpass		\ Noise drum, state variable 1
+VARIABLE lowpass		\ state variable 2
+VARIABLE highpass
+VARIABLE frequency		\ filter resonance at Fs*[50]/(1000*2*PI)
+VARIABLE 1000/Q			\ filter Q = 1000/[150] = 6.6
+VARIABLE init10  #8000 init10 !
+VARIABLE init00      0 init00 !
+VARIABLE scale	     1 scale  !	\ ir is simulated for 720*scale samples
+
+VARIABLE bandpass1		\ drum 1
+VARIABLE lowpass1
+VARIABLE frequency1		\ filter resonance at Fs*[50]/(1000*2*PI)
+VARIABLE 1000/Q1		\ filter Q = 1000/[150] = 6.6
+VARIABLE init11 #16000 init11 !
+VARIABLE init01      0 init01 !
+VARIABLE scale1	     1 scale1 !
+
+VARIABLE bandpass2		\ drum2
+VARIABLE lowpass2
+VARIABLE frequency2
+VARIABLE 1000/Q2
+VARIABLE init12 #20000 init12 !
+VARIABLE init02      0 init02 !
+VARIABLE scale2      1 scale2 !
+
+VARIABLE bandpass3		\ drum3
+VARIABLE lowpass3
+VARIABLE frequency3
+VARIABLE 1000/Q3
+VARIABLE init13 #32000 init13 !
+VARIABLE init03      0 init03 !
+VARIABLE scale3      1 scale3 !
+
+VARIABLE bandpass4		\ drum4
+VARIABLE lowpass4
+VARIABLE highpass4
+VARIABLE frequency4
+VARIABLE 1000/Q4
+VARIABLE init14 #30000 init14 !
+VARIABLE init04      0 init04 !
+VARIABLE scale4      1 scale4 !
+
+VARIABLE volume	     	 #25 volume !
+VARIABLE volumebass 	#200 volumebass !
+VARIABLE noiseamplitude	$1FF noiseamplitude !
+VARIABLE snareamplitude	#100 snareamplitude !
+
+DOC drums
+ÄÄÄ
+
+This program simulates the impulse response of an infinite gain state
+variable filter.  Only the low-pass output of this filter is useful in a
+musical sense, allowing me to simplify the equations and eliminate the
+high-pass variable altogether. Three '*/' operations suffice for the
+simulation, resulting in about 1 sample per 80 microseconds on a 12 Mhz
+AT, F-4TH 2.0.  (30 us/s on NC4000P (?)).
+
+Because the sample rate is nearly fixed, long impulse responses or high-Q
+filters need more samples. In these cases the VARIABLE { scale } must be
+adjusted upward. (scale = 1 will compute 720 samples, this is the minimum
+per run).
+
+Between simulations, the program waits a few hundred milliseconds. This 
+time is adjustable and can be manipulated to create a "beat". Note that 
+fast beats and high-Q (==> long impulse responses) don't mix!
+
+The VARIABLEs { init0 init1 } influence the starting phase and amplitude of 
+the waveform. The phase you can SEE, but at least to me it is unhearable.
+
+The amplitude of the waveform should not be too low, remember you've got only
+14 bits! If the amplitude becomes too low, modulation noise is quite
+noticeable. You will have to live with this. Sometimes the effect is useful
+(snare drums).
+
+Too high an amplitude is not always a problem, a few "instruments" sound more
+realistic with a certain amount of clipping.
+
+ENDDOC
+
+: (.FILTER)						\ n, n, n, n, id ---
+
+		CR ."     ----  STATE-VARIABLE FILTER " . ." ----" CR
+		CR ." 'frequency' = " 4 U.R   ."  '1000/Q'   = " 4 U.R  
+		CR ." Initial values: 'init1' = " . ." , 'init0' = " . 
+		CR ;
+		
+: .FILTER0	       0        0 1000/Q  @ frequency  @ 0 (.FILTER) ;
+: .FILTER1	init01 @ init11 @ 1000/Q1 @ frequency1 @ 1 (.FILTER) ;
+: .FILTER2	init02 @ init12 @ 1000/Q2 @ frequency2 @ 2 (.FILTER) ;
+: .FILTER3	init03 @ init13 @ 1000/Q3 @ frequency3 @ 3 (.FILTER) ;
+: .FILTER4	init04 @ init14 @ 1000/Q4 @ frequency4 @ 4 (.FILTER) ;
+
+: INITIALIZE0	init10 @ bandpass  ! 			\ ---
+		init00 @ lowpass  ! ;
+: INITIALIZE1	init11 @ bandpass1 ! 			\ ---
+		init01 @ lowpass1 ! ;
+: INITIALIZE2	init12 @ bandpass2 !  			\ ---
+		init02 @ lowpass2 ! ;
+: INITIALIZE3	init13 @ bandpass3 !  			\ ---
+		init03 @ lowpass3 ! ;
+: INITIALIZE4	init14 @ bandpass4 ! 			\ ---
+		init04 @ lowpass4 ! ;
+
+: NOISE-FILTER	( snare )				\ i --- n
+		lowpass @ bandpass @ 
+		frequency @ #1000 */  + DUP lowpass !
+		       - bandpass @ 1000/Q @ #1000 */  - DUP ( DUP highpass ! )
+		frequency @ #1000 */  bandpass +!
+		1000/Q @ snareamplitude @ */ ;
+
+: FILTER1  	( bass )				\ --- n
+		lowpass1 @ bandpass1 @ frequency1 @ #1000 */  + DUP lowpass1 !
+		( new lowpass1 ) bandpass1 @ 1000/Q1 @ #1000 */  + NEGATE  
+		frequency1 @ #1000 */  bandpass1 +!
+		lowpass1 @ 1000/Q1 @ volumebass @ */ ;
+
+: FILTER2  						\ --- n
+		lowpass2 @ bandpass2 @ frequency2 @ #1000 */  + DUP lowpass2 !
+		( new lowpass2 ) bandpass2 @ 1000/Q2 @ #1000 */  + NEGATE  
+		frequency2 @ #1000 */  bandpass2 +!
+		lowpass2 @ 1000/Q2 @ volume @ */ ;
+
+: FILTER3  						\ --- n
+		lowpass3 @ bandpass3 @ frequency3 @ #1000 */  + DUP lowpass3 !
+		( new lowpass3 ) bandpass3 @ 1000/Q3 @ #1000 */  + NEGATE  
+		frequency3 @ #1000 */  bandpass3 +!
+		lowpass3 @ 1000/Q3 @ volume @ */ ;
+
+: NON-LINEAR	DUP 0< >R ABS				\ i --- i^2/100
+		1000/Q4 @ #2000 */ DUP DUP #100 */
+		#2000 1000/Q4 @ */ +
+		R> IF NEGATE 
+		ENDIF ;
+
+: NL-FILTER						\ i --- n
+		lowpass4 @ bandpass4 @ frequency4 @ #1000 */  
+		+ DUP lowpass4 !
+		NON-LINEAR - bandpass4 @ 1000/Q4 @ #1000 */  - 
+		( DUP highpass4 ! )
+		frequency4 @  #1000 */  bandpass4 +!
+		lowpass4 @ 1000/Q4 @ volume @ */ ;
+
+ 
+: VCA		#720 */ ;				\ n, "time" --- n'
+
+
+VARIABLE speed	#4000 speed !
+VARIABLE wait 	4 wait !
+
+DOC testhit
+ÄÄÄ
+(*
+: TESTHIT	SET.DAC
+		scale1 @ 0 #720 U*+  
+		BEGIN	FILTER1 ( $8000 + B>DAC ) 
+				 . KEY DROP
+			-1 -1 D+ 2DUP OR 0=
+		UNTIL	2DROP
+		wait @	
+		0 DO speed @ CYCLES 
+		LOOP ;
+*)
+ENDDOC
+
+VARIABLE ssamples	#720 ssamples !
+
+: HIT	 	SET.DAC
+		scale1 @ scale2 @ MAX scale3 @ MAX 
+		0 ssamples @ U*+  
+		BEGIN	FILTER1 FILTER2 FILTER3 
+			+ + 3 /  $8000 + B>DAC
+			-1 -1 D+ 2DUP OR 0=
+		UNTIL	2DROP
+		wait @	
+		0 DO speed @ CYCLES 
+		LOOP 
+		?KEY IF ABORT" Stopping.." 
+		  ENDIF ;
+
+: BLAST		INITIALIZE0 
+		scale @ 0 ssamples @ U*+  
+		BEGIN OVER >R
+		      RANDOM noiseamplitude @ AND NOISE-FILTER 
+		      R> VCA $8000 + B>DAC
+		      -1 -1 D+ 2DUP OR 0=
+		UNTIL 2DROP
+		wait @	
+		0 DO speed @ CYCLES 
+		LOOP ;
+
+: BOIING	INITIALIZE4 
+		scale4 @ 0 ssamples @ U*+  
+		BEGIN 0 NL-FILTER $8000 + B>DAC
+		      -1 -1 D+ 2DUP OR 0=
+		UNTIL 2DROP
+		wait @	
+		0 DO speed @ CYCLES 
+		LOOP ;
+
+
+: SETBASS	#500 1000/Q1 !	#75   frequency1 ! 
+		#16000 init11 ! ;		 	SETBASS
+: SETTOMS	#24  1000/Q2 !	#500  frequency2 ! 
+		#20000 init12 ! ;			SETTOMS
+: SETBLOCKS	#12  1000/Q3 !	#1600 frequency3 ! 
+		#32000 init13 ! ;			SETBLOCKS
+: SETSNARE	#100 1000/Q  !	#115  frequency  ! 
+		#16000 init10 ! ;			SETSNARE
+
+: SNARE		INITIALIZE0 ;
+: BASSDRUM	INITIALIZE1 ;
+: TOMS		INITIALIZE2 ;
+: BLOCKS	INITIALIZE3 ;
+
+: NOHIT		  init10 @   init11 @    init12 @    init13 @
+		0 init10 ! 0 init11 !  0 init12 !  0 init13 !
+		HIT
+		  init13 !   init12 !    init11 !    init10 ! ;
+
+
+: R0		BASSDRUM HIT 	3 0 DO BLOCKS  HIT LOOP ;
+: R1		BASSDRUM HIT  	3 0 DO TOMS    HIT LOOP ;
+: R1a		BASSDRUM HIT  	3 0 DO SNARE BLAST LOOP ;
+
+: R2		3 0 DO R1  LOOP  R0 ;
+: R2a		3 0 DO R1a LOOP  R0 ;
+
+: R3		BASSDRUM HIT TOMS HIT
+		wait @ DUP 2/  wait !
+		BLOCKS HIT   NOHIT 2 0 DO   BLOCKS HIT LOOP NOHIT
+		wait ! ;
+: R4		BASSDRUM HIT TOMS HIT
+		wait @ DUP 2/ wait !
+		TOMS HIT     NOHIT 2 0 DO     TOMS HIT LOOP NOHIT
+		wait ! ;
+: R5		BASSDRUM HIT TOMS HIT
+		wait @ DUP 2/ wait !
+		BASSDRUM HIT NOHIT 2 0 DO BASSDRUM HIT LOOP NOHIT
+		wait ! ;			\ tempo doubles
+
+: R2b		3 0 DO R4 LOOP R3 ;
+: R2c		4 0 DO R3 LOOP ;
+: R2d		4 0 DO R5 LOOP ;
+ 
+: R6		R2b R3	R2b  R4 ;
+: R7		R2d R2  R2   R2a ;
+: R8		R2b R2c R2d  R2b ;
+: R9		R2d R2  R2   R2a
+		R2b R3	R2b  R4
+		R2b R2c R2d  R2b 
+		R2d R2  R2   R2a ;
+
+
+VARIABLE rhythm
+
+: RHYTHM	rhythm @ EXECUTE ;
+
+: set.R6	[ ' R6 ] LITERAL rhythm ! ;
+: set.R7	[ ' R7 ] LITERAL rhythm ! ;
+: set.R8	[ ' R8 ] LITERAL rhythm ! ;
+: set.R9	[ ' R9 ] LITERAL rhythm ! ;
+
+	set.R7	\ nicest, has snare and tempo doubling in it
+
+: HOEMPA	SETBASS 
+		SETTOMS  
+		SETBLOCKS 
+		SETSNARE	( Could be caught in NOHIT .. )
+
+		BEGIN RHYTHM
+		REPEAT ;
+
+			\ (* End of Information *) /
+

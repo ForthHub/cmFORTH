@@ -1,0 +1,50 @@
+	\ (* ******************************************************* *) /
+	\ (* Vector words.	        Marcel Hendrix, June 8  1987 *)	/
+	\ (*	Joe Barnhart, Dr Dobb's Journal, September 1984	     *)	/
+	\ (* ******************************************************* *) /
+
+		FORTH  
+		REMEMBER -VECTORS
+
+: VECTOR	\ order, scale, word_size_in_cells ---
+		CREATE	ROT 2DUP , ,		\ store order, wordsize
+			ROT ,			\ then scale
+			*  DUP ,		\ structure size
+			HERE OVER ERASE ALLOT	\ 'order' = #elements
+		DOES	R> 32767 AND ;		\ --- 'structure
+
+: &ORDER	\ vector_descriptor -- order_of_vector
+		@ ;
+
+: &ESIZE	\ vector_descriptor -- size_of_entries
+		1 + @ ;				\ Always 2
+
+: &SCALE	\ vector_descriptor -- scale_of_vector
+		2 +  @ ;
+
+: &SIZE		\ vector_descriptor -- size_of_vector
+		3 +  @ ;
+
+\ : [I]				 \ index, vector_descriptor -- 'entry
+\		DUP  >R	 &ORDER	 \ save descriptor, get entrysize
+\		OVER < OVER 1 < OR
+\		IF   ABORT" Vector bounds exceeded...[I]"
+\		THEN
+\		1 - R@ &ESIZE *  \ index * entrysize
+\		4 +  R> + ;	 \ offset to entries
+
+\		For efficiency, this is put simpler (&ESIZE is 2)
+
+: [I]				\ index, vector_descriptor --- 'entry
+		SWAP 1 -	\ save descriptor, index is to base 1
+		2*		\ index * entrysize (always 2)
+		4 +  +	;	\ offset to entries
+
+: XVECTOR	2  VECTOR ;	\ order, scale ---
+
+: X@V		[I] X@ ;	\ index, vector_descriptor --- x
+
+: X!V		[I] X! ;	\ x, index, vector_descriptor ---
+
+			\ (* End of source *) /
+

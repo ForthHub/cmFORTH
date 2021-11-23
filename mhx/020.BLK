@@ -1,0 +1,14 @@
+ ( Textfile-I/O	words in NOVIX,	October	19th 1987 )  HEX
+
+ : SAVECNTXT	R>	>IN @ >R  MSG @	>R  CNT	@ >R BASE @ >R
+		CONTEXT	@ >R	>R ASKBUF MSG !	;
+ : RESTORECNTXT	GIVEBUF	 R>	R> CONTEXT ! R>	BASE !
+		R> CNT ! R> MSG	! R> >IN !	>R ;
+ : |		MSG @ 80 EXPECT'   0 0 >IN 2! ;
+
+ : LOADF	NAME SAVECNTXT	| 0 0 INTERPRET	RESTORECNTXT
+		1 DROP ;   ( A bug in the compiler..squash it )
+ : RESETDISK	0 Bufp ! ; ( needed when error in nested file )
+ COMPILER	: \    | ;	 
+		: |    | ;
+ FORTH		: \    [COMPILE] | ; 

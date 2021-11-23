@@ -1,0 +1,123 @@
+	\ (* ******************************************************* *) /
+	\ (* Fast Fourier Transform.	Marcel Hendrix, June 08 1987 *) /
+	\ (*	Joe Barnhart, Dr Dobb's Journal, September 1984	     *) /
+	\ (* ******************************************************* *) /
+
+		FORTH 
+		REMEMBER -FOURIER
+
+	        10000	=:	10K	\ Scaling constant
+
+		VARIABLE	dir	\ If true: Inverse FFT
+		VARIABLE	vec	\ Current vector base
+		VARIABLE	n	\ points in FFT
+	       XVARIABLE	u	\ complex angle counter
+	       XVARIABLE	w	\ complex angle increment
+
+
+: V[I][J]				\ i, j --- '[i], '[j]
+		vec @ [I] SWAP		\ first address
+		vec @ [I] SWAP ;	\ and second
+
+: XSWAPV				\ ( i,j --- ) Swap pointed to cmplx #s
+		V[I][J]	 2DUP SWAP
+		>R >R			\ Save one copy
+		X@ ROT X@ R> X! R> X! ; \ Swap them
+
+: BIT-REVERSE	1 n @ 1				\ ---
+		DO				\ For 1 to size_of_vector
+			DUP I > IF		\ Compare indices
+				    DUP I XSWAPV
+			     ENDIF
+			n @ 2/	SWAP		\ Increment = points/2
+			BEGIN	2DUP <		\ while incr < index
+			WHILE	OVER -	SWAP 2/
+				SWAP
+			REPEAT			\ ix = ix-incr, incr= incr/2
+			+			\ ix = ix+incr
+		LOOP
+		DROP ;				\ drop index
+
+: BUTTERFLY				\ ( i,j --- )  Butterfly calculation
+		V[I][J]	 2DUP >R >R
+		X@ u X@ 10K X*		\ Form temporary product
+		ROT X@ XSWAP X2DUP	\ Prepare stack for + and -
+		X-  >R >R  X+  R> R>	\ Fi - temp, Fi + temp
+		dir @			\ Forward if 0, else inverse
+		   IF	XSWAP
+		 ELSE	X2/ XSWAP X2/
+		ENDIF
+		R> X! R> X! ;		\  Store products
+
+CREATE 2**TAB	1     , 2     , 4     , 8     , 
+		$10   , $20   , $40   , $80   ,
+		$100  , $200  , $400  , $800  ,
+		$1000 , $2000 , $4000 , $8000 ,
+
+: 2**					\ n --- 2**n
+		2**TAB + @ ;
+
+: LOG2	DUP 0=				\ n --- log2[n]
+	   IF  ABORT" Log of 0 doesn't exist."
+	ENDIF
+	0 SWAP				\ initial value of log
+	BEGIN	DUP 1 + 0< NOT		\ Test upper bit
+	WHILE	2* SWAP 1 + SWAP	\ SHL, bump logarithm
+	REPEAT	DROP #15 SWAP - ;	\ return log base 2 of input
+
+
+
+	CREATE	wtab	11 ,	2  ,	\ vector, entries, wsize
+		     10000 ,	22 ,	\ scale, #cells_used
+	-10000 ,     00000 , 00000 , -10000 , 07071 , -07071 ,
+	 09239 ,    -03827 , 09808 , -01951 , 09952 , -00980 ,
+	 09988 ,    -00491 , 09997 , -00245 ,
+	 09999 ,    -00123 , 10000 , -00061 , 10000 , -00031 ,
+
+\	Table of cosines and -sines for angles of PI/n where n is an
+\	integral power of 2. First entry is PI/1, cos = -1, -sin = 0
+\	Next is PI/2, cos = 0, -sin = -1.
+
+\	With upper table, a record of 1024 samples can be converted
+\	to 512 amplitude and 512 phase components. (512 'frequencies')
+\	This means that if input is real, don't 'believe' any harmonic
+\	> N/2, where N is the number of samples taken.
+
+: INNER-LOOP			\ startpoint, increment ---
+	DUP 2/			\ increment 2/ is butterfly offset
+	ROT n @ 1 + SWAP
+	DO	I  2DUP +
+		BUTTERFLY
+		OVER
+       +LOOP
+	2DROP ;
+
+: FFT-KERNEL				\ ( --- ) n and vec must be set
+	n @  LOG2 1 +			\ For i=0 to log2[n]
+	1 DO
+		0 10K u X!
+		I wtab X@V		\ get 1/-arg[PI/i]
+		dir @ IF X'
+		   ENDIF
+		w X!			\ Take conjugate if IFFT
+		I 2** DUP 2/ 1 +	\ increment and offset counter
+		1 DO
+			I OVER INNER-LOOP
+			w u 10K X*!	\ set new value for angle
+		  LOOP	DROP		\ drop increment value
+	  LOOP ;
+
+: INIT		DUP vec ! @ n ! ;	\ vector ---
+					\ Initialize size variable
+
+: DO-VECTOR	INIT  BIT-REVERSE  FFT-KERNEL ;		\ vector ---
+: FFT		 0 dir !  DO-VECTOR  ;			\ vector ---
+: IFFT		-1 dir !  DO-VECTOR  ;			\ vector ---
+
+\	These routines do a 64-real-samples (I)FFT in  35 ms.
+\	So with real_to_complex and complex_to_real routines,
+\	30 128 point FFT's per second are possible! (on a NOVIX)
+\	Imagine what fixed bugs in * would do? Or a faster DO-LOOP?
+
+			\ (* End of Source *) /
+

@@ -1,0 +1,94 @@
+	\ (* ******************************************************* *) /
+	\ (* IBM stock analysis.	 Marcel Hendrix, 8 June 1987 *) /
+	\ (*	 Joe Barnhart, Dr Dobb's Journal, September 1984     *) /
+	\ (* ******************************************************* *) /
+
+		FORTH
+\		REMEMBER -IBM
+
+\		LOADF cmplx.mat			\ default path
+\		LOADF vectors
+\		LOADF fft
+
+		0 >RAM	H !			\ There is not enough room..
+
+		VARIABLE mag	3000  mag !	\ Multiplication factor
+		VARIABLE middle 9000  middle !	\ start position
+		VARIABLE plotbuf  69  ALLOT	\ buffer for building image
+						\ Mark: VARIABLE allots 16b!
+
+		\ Init works for { IBM PLOTMAG } only
+
+: MAP						\ n --- n'
+		middle @ -  35 mag @  */ ;	\ map in character coordinates.
+
+: BUF!						\ char, n ---
+		69 MIN 1 MAX			\ FILL can't handle 0 count..
+		plotbuf	 SWAP ROT FILL ;
+
+: ?BUF!						\ char, n ---
+		DUP 70 <  OVER -1 > AND		\ check for out-of-bounds
+		   IF	plotbuf +  !		\ in bounds, then print
+		 ELSE	2DROP
+		ENDIF ;
+
+: PLOTDAT					\ n ---
+		plotbuf 70 BL FILL		\ blank plotterbuffer
+		&: 0  MAP  ?BUF!		\ "zero" line if in range
+		&* SWAP MAP BUF!		\ plot character used for data
+		plotbuf 69 FOR	1 @+
+				SWAP EMIT
+			   NEXT DROP ;
+
+: PLOTINDEX					\ n ---
+		SPACE	5 U.R			\ print index number
+		2 SPACES  &| EMIT ;
+
+: PLOTMAG					\ vector_descriptor ---
+		CR
+		DUP @ 1 +  1
+		 DO
+		   I PLOTINDEX
+		   I OVER X@V	|X| PLOTDAT
+		   CR I 23 MOD  0= IF KEY DROP
+				ENDIF
+		 LOOP
+		CR DROP ;
+
+: X,		0 , , ;				\ Re ---
+
+\	Data for IBM stockmarket over 1983, by week, in $ * 100
+
+	64 100 XVECTOR IBM   -64 2*  ALLOT	\ Back to first entry
+
+	9663 X,	   9913 X,    9463 X,	 9738 X,
+	9738 X,	   9638 X,    9863 X,	10038 X,
+       10225 X,	  10075 X,    9988 X,	10213 X,
+       10163 X,	  10388 X,   11013 X,	11725 X,
+       11700 X,	  11763 X,   11650 X,	11063 X,
+       11300 X,	  11400 X,   11425 X,	12113 X,
+       12300 X,	  12100 X,   12150 X,	12013 X,
+       12438 X,	  12038 X,   11975 X,	11850 X,
+       12250 X,	  11783 X,   11975 X,	12225 X,
+       12313 X,	  12663 X,   12688 X,	13225 X,
+       13175 X,	  12700 X,   12800 X,	12225 X,
+       12688 X,	  12350 X,   12100 X,	11788 X,
+       12225 X,	  12088 X,   12363 X,	12200 X,
+	   0 X,	      0 X,	 0 X,	    0 X,
+	   0 X,	      0 X,	 0 X,	    0 X,
+	   0 X,	      0 X,	 0 X,	    0 X,
+
+: FFT?		IBM  FFT  250 mag !	0 middle ! IBM PLOTMAG ;
+
+: IFFT?		IBM IFFT 3000 mag !  9000 middle ! IBM PLOTMAG ;
+
+: .SPEED   99	FOR
+	 	  IBM FFT	
+		  IBM IFFT
+		NEXT
+		CR ." 100 transformations done in 7 seconds, right?" CR ;
+
+\	NC4000 needs 35 ms for FFT, 35 ms for IFFT !
+
+			\ (* End of Source *) /
+

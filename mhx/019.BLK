@@ -1,0 +1,15 @@
+ ( Textfile-I/O	words in NOVIX,	October	19th 1987 )  HEX
+
+ VARIABLE Bufp	0 Bufp !
+
+ : ASKBUF	Bufp @ 80 * C00	+  Bufp	@ 1 + 7	AND Bufp ! ;
+ : GIVEBUF	Bufp @ 1 - 7 AND Bufp !	;
+
+ : NAME		4020 WORD 4 EMIT TYPE 0	EMIT ;
+
+ : EXPECT'	SWAP CURSOR ! 1	- DUP 5	EMIT ( addr, n -- )
+		FOR	KEY DUP	0D XOR
+			IF   4000 + CURSOR @ 1 !+ CURSOR !
+			ELSE DROP R> - CNT ! EXIT
+			THEN
+		NEXT	1 + CNT	! ; ( stop on CR or > n	)

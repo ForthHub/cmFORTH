@@ -1,0 +1,160 @@
+			DOCUMENTATION			 (create 21/10/87)
+			=============			 (update 30/11/88)
+
+The program NOVIXCOM enables UP and DOWNloading to the NOVIX Forth engine.
+
+To this end, a 80x8x-computer programmed in F-4TH serves as a terminal for
+the NOVIX.
+
+Whenever the NOVIX chip executes an instruction needing mass storage (BLOCK for
+instance), it will notify the host by sending the ASCII REQ character followed
+by the 2 byte disk block#.
+
+A negative # means the block has to be written, else it must be read. A
+block is 1024 bytes long, as is standard in a Forth environment. It may
+contain anything.
+
+NOVIX-blocks exist as files with the name "xxx.blk" on the 80x8x MS-DOS host.
+Here "xxx" is the blocknumber, ranging from 000 to 999. It is advised to put
+them in a sub-directory as the root can only hold 112 files.
+
+My implementation stores conventional 1 Kbyte blocks in textfiles, that is,
+after a maximum of 64 bytes a <cr><lf> is placed and the last byte is a <^Z>.
+Exactly 64 bytes per line is a nuisance when using a non-Forth editor, so
+I made it possible to include <cr><lf> pairs and <tab>'s. The files produced
+in this way MUST fit in a Novix 1024-byte blockbuffer. ( The <cr><lf> pairs
+are not sent to the NC4000, the <tab> is replaced by a space.)
+
+Unfortunately these screens will LOOK abominable when using the NOVIX'
+built-in editor. Also, there will be 3 serious problems :
+
+	1) Because of lack of <cr><lf> pairs, there must be at least ONE space
+	   between words on different lines in host textfiles. (FIG-Forth
+	   users will recognize this problem.)
+	   The simple fix of converting <cr><lf> to 1 or 2 spaces might invoke
+	   problem 2.
+
+	2) Note that using above scheme, the number of lines can be much larger
+	   than the usual 16. Still, screens on the host should not have more
+	   than 1024 sendable bytes in them. This can be checked
+	   (approximately) by consulting the DOS directory-entry. The Novix
+	   gives no message when you make this mistake and will probably do
+	   something nasty when the screen buffers overflow.
+
+	3) The conventional "\" won't work, as lines aren't padded to 64 bytes.
+
+To overcome these problems I added the facility to alternatively use text
+files of unlimited length, containing any number of <cr><lf>, <tab> and
+"\". This is a concept apparently unknown to (unwanted by) Chuck Moore, so a
+few non-too-trivial words had to be written on the Novix side to make it
+possible. Especially to allow for 8-level nesting of LOADF. These text files
+cannot be stored in the Novix' block buffers (amazed ?) so the one at $C00
+was free to be used as a command line stack for all opened files.
+
+With carefull programming you may be able to intermix "conventional" LOAD
+with LOADF, but watch out for the use of the second blockbuffer!
+
+
+Let me summarize : There are 4 ways of getting your source into the NC4000.
+
+ 1) Use NOVIXCOM as a terminal-emulator and just type it in.
+
+ 2) Use your old Forth blocks by inserting a cr><lf> after every 64 bytes.
+    These blocks should be stored in a sub-directory, one block per file.
+    (Be sure to separate words on differing lines with at least one space).
+    Rename them to xxx.BLK, where xxx is a 3-digit (DECIMAL) number.
+    If you type xxx LOAD at the Novix side, it will load xxx.BLK from the
+    host.
+
+ 3) Create Forth blocks with a conventional editor. You may use <cr><lf>'s
+    and <tab>'s, but make sure your file can fit in a single NC4000 block
+    buffer. Remember that you can't use "\", unless you're very clever.
+    Continue at 2)
+
+ 4) Create textfiles. The restrictions at 3) are removed.
+    To load these files, type
+
+		LOADF a:\forth\novix\foo.bar
+
+    or any other path/filespecification. LOADF can be nested 8 levels.
+    LOADF will restore BASE, CONTEXT, MSG, CNT and >IN when it is ready.
+    (LOAD does only >IN and BLOCK and resets to DECIMAL !)
+
+				HOW-TO
+				======
+
+Acquire RS-232.HI, RS-232I from PSD, or from a fellow forthian, if you don't
+have them yet. RS-232I will need modification if you're going to use 19200 baud
+or above, notably a larger receive-buffer to account for the sloooow scrolling
+of the standard PC-display. This is necessary because the NC4000 does not
+support handshaking. I also recommend to disable the ABORT on anything but
+"Not initialized" and "Break". (My AT has a sporadic "Overrun" error at these
+speeds.)
+
+Download NOVIXCOM and xxx.BLK (numbers 014 to 020). NOVIXCOM runs under
+F-4TH at the host-side. The .BLK files are for the NC4000. Below, I will
+describe the operation of some special words and what they should do, so you
+can try to implement them on your own system.
+
+If you want to play with the Novix, also download GOODIES, CMPLX.MAT, VECTORS,
+FFT and/or STOCK.IBM. These are in the optional textfile-format described
+above, so they must be LOADF'ed. The scenario is as follows:
+
+=	Load NOVIXCOM under F-4TH.
+=	Connect a RS-232 cable from your COM1-port to the Novix-board.
+=	Switch the NOVIX's 5 volt supply on. (It does NOT flush its
+	blockbuffers if you merely reset it.)
+=	Execute { NOVIXIO }. Type a "B" to tell your baudrate to the Novix
+	(I've preinstalled 28800 baud.)
+=	After the sign-on message, type
+
+		 14 LOAD   LOADF goodies   LOADF stock.ibm
+
+=	To see the initial data, execute { IBM PLOTMAG }
+=	To Fourier transform this, type	  { FFT? } Converting back to the
+	time-domain is done with { IFFT? }.
+=	To taste performance: { .SPEED } will tell you how long it takes
+	to do 100 FFT's followed by 100 inverse FFT's. (7 seconds)
+
+				GLOSSARY
+				========
+
+The advantage of the following words is that they work with segmented
+addresses anywhere in memory and that they can all be used for very large
+(>64 kbyte) files. None of the (maddening small) Forth codespace is used.
+
+allocate	( d --- ) Ask MS-DOS for <d> bytes of memory. The startaddress
+		and a pointer in this arena, initialized to the startaddress,
+		is pushed on the bufferstack.
+buffer?		( --- seg, offs ) will return the startaddress from the
+		buffer on top of the bufferstack. (it stays there.)
+deallocate	removes the topbuffer and pointer and gives the memory back to
+		DOS.
+ptr@		( --- seg, offs ) pops off the current pointer..
+ptr!		( seg, offs --- ) ..pushes it. These two words can be used with
+LCOUNT		( seg, offs --- seg', offs', byte ) to read a buffer
+		anywhere in Dos's memory.
+pushhandle	reads a string from the input stream and asks DOS for a handle
+		to this file. This handle is pushed on a stack and can be
+		tested with :
+handle?		( --- handle# )
+open.handle	( address --- ) the same as pushhandle, but now the address
+		is pointing to the path+file name string, and no user input
+		is needed.
+		The handle on top of the handlestack is used by the words :
+read		( bufseg, bufoffs, d --- )
+write		( seg, offs, d --- )
+		Sometimes you KNOW the handle# already, e.g when writing to the
+		console (1), so you must be able to push a handle directly :
+>H		( handle --- )
+pophandle	removes the current handle (that is, the file is closed) and
+		exposes the next. (stack!)
+handle?		( --- handle ) returns the current handle (the one on top of
+		the handle-stack). Used for getting info about the opened
+		file, e.g :
+/BYTES		( handle --- d ) gives the length of the file in bytes, which
+		is again used for requesting a buffer with { allocate }.
++ERR?		gives extended information about the latest DOS-error that
+		occurred and { ABORT }'s if there indeed WAS an error. It is
+		implemented with INT 21h, function# 59h.
+

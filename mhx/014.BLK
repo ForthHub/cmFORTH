@@ -1,0 +1,16 @@
+ ( 014.blk	cmForth	 1986 September	entered	June 7 1987 )
+
+  15 LOAD 16 LOAD 17 LOAD 18 LOAD	( optimizing compiler)
+  19 LOAD 20 LOAD			( textfile-I/O )
+
+ : 0<	[COMPILE] 0<	[COMPILE] NOP ;	( 0< has bug )
+   FORTH
+ : REMEMBER	CREATE		CONTEXT	2 - 2@ , ,
+		DOES		R> 32767 AND DUP 2 + H ! 2@
+				CONTEXT	2 -  2!
+				FORTH ;
+
+ : THRU		OVER -	FOR	DUP  LOAD  1 + ( sta, end -- )
+			NEXT	DROP ;
+
+		REMEMBER EMPTY

@@ -1,0 +1,16 @@
+( 017.blk Binary Operators )  OCTAL
+ FORTH : CONSTANT  CREATE  -1 ALLOT [COMPILE] LITERAL (	n -- )
+				    [COMPILE] EXIT ;
+ : BINARY	CREATE	,  ,			( n, n -- )
+		DOES	R> 77777 AND 2@
+   ?CODE @ DUP IF	@ DUP 117100 AND 107100	=
+			OVER  177700 AND 157500	= OR
+		IF	( y -!)	DUP 107020 -
+		 IF	SWAP-DROP XOR DUP 700 AND 200 =
+		  IF	500 XOR
+		  ELSE	DUP 70000 AND 0= IF	20 XOR
+					 THEN
+		  THEN	?CODE  @ ! EXIT
+		 THEN
+		THEN
+	       THEN	DROP  ,C DROP ;

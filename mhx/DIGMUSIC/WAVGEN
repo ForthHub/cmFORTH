@@ -1,0 +1,398 @@
+	\ (* ************************************************** *) /
+	\ (*							*) /
+	\ (*	  W A V E F O R M  G E N E R A T I O N  II 	*) /
+	\ (*	     Marcel Hendrix, December 28th 1988	        *) /
+	\ (*	LC: Jan 16th, 1989  Changed to look-up tables	*) /
+	\ (*    LC: May  7th, 1989  Changed for Novix 14-bit DA	*) /
+	\ (*    LC: May 14th, 1989  Removed */ from PLINK ..	*) /
+	\ (*							*) /
+	\ (* ************************************************** *) /
+
+
+
+			\ (* Goodies *) /
+
+
+: UMAX		2DUP U< IF SWAP-DROP	\ u1, u2 --- uhighest
+		      ELSE DROP
+		     ENDIF ;
+
+
+VARIABLE rnd	H rnd !
+
+: RANDOM				\ --- n
+		rnd @ #6927 #62842 U*+ 
+		D2/ DROP DUP rnd ! ;	
+
+
+DECIMAL		0 >RAM  H !		\ Application is LARGE
+
+
+
+DOC
+ÄÄÄ
+
+These waveforms are scaled to fit in 16 bits  (DC-offset of 2^15).
+The dsintable from F-4TH contains 90 31-bit sines, so the MSW has 15 bits 
+and must be extended by adding 2^15. The Novix DAC-hardware throws away 
+the 2 lowest bits of the result.
+
+F-4TH on a 12.5 Mhz AT is able to output one sample every 10 microseconds, 
+yielding a maximum output frequency (Nyquist) of 50 Khz. The Novix needs
+30 cycles delay at a sample rate of 50 Khz, and reaches 44 Khz (no delay
+cycles) in PLINK.
+
+"Clicks" are a hardware problem. Especially waveforms with low harmonic
+content suffer when the frequency is changed suddenly and a discontinuity in
+the time domain is created. Remedy: a software zero crossing detector.
+It works reasonably well, but is not perfect.
+
+ENDDOC
+
+			\ (* Hardware Interface *) /
+
+
+: SET.DAC
+	$1D  13 I! ;		\ instruct X1 to listen, others not.
+				\ Needed because EMIT does $1E 13 I!
+
+: STROBE			\ Short negative pulse on X1 line
+	SET.DAC			\ Only once if no EMIT or KEY intervention
+	 0 12 I! 		\ 2 or 3 cycles ==> 500..750 ns
+	-1 12 I! ;
+
+: B>DAC				\ n ---		Assumes SET.DAC
+	8 I! 
+	0 12 I! -1 12 I! ;	\ STROBE expanded here for speed.
+
+\ VARIABLE step	100 step !
+
+\ : TEST.DAC			\ ---
+\	SET.DAC			\ produce a sawtooth, if all is well
+\	0 -1 FOR
+\		step @ + DUP B>DAC
+\		#30 CYCLES
+\	     NEXT
+\	DROP ;
+
+
+			\ (* Variables *) /
+
+
+VARIABLE increment 				\ frequency selection
+VARIABLE interval	#30 interval !		\ minimum cycle count
+VARIABLE octave		 -2 octave !
+VARIABLE centre		  6 centre !		\ "middle octave"
+VARIABLE waveform				\ contains CFA of generator
+VARIABLE old		0 old !			\ try to be phase continuous
+VARIABLE width		#100 width !		\ 10% pulse
+VARIABLE phaser		#80 phaser !		\ changes 8% per tone
+
+CREATE   length    	0 , 0 , 		\ length of note
+
+
+
+		\ (* Creating the wave tables *) /
+
+
+
+CREATE sine	DECIMAL
+
+ 32768 ,  33339 ,  33911 ,  35053 ,  35623 ,  36761 ,  37328 ,  37894 , 
+ 39020 ,  39580 ,  40695 ,  41248 ,  41800 ,  42893 ,  43436 ,  44511 , 
+ 45043 ,  45571 ,  46616 ,  47132 ,  48151 ,  48654 ,  49152 ,  50132 , 
+ 50614 ,  51562 ,  52028 ,  52488 ,  53389 ,  53830 ,  54694 ,  55115 , 
+ 55938 ,  56339 ,  56732 ,  57498 ,  57869 ,  58589 ,  58937 ,  59277 , 
+ 59933 ,  60249 ,  60855 ,  61145 ,  61427 ,  61964 ,  62219 ,  62703 , 
+ 62931 ,  63149 ,  63559 ,  63750 ,  64104 ,  64266 ,  64419 ,  64696 , 
+ 64819 ,  65038 ,  65132 ,  65217 ,  65356 ,  65411 ,  65491 ,  65516 , 
+ 65535 ,  65516 ,  65491 ,  65411 ,  65356 ,  65217 ,  65132 ,  65038 , 
+ 64819 ,  64696 ,  64419 ,  64266 ,  64104 ,  63750 ,  63559 ,  63149 , 
+ 62931 ,  62703 ,  62219 ,  61964 ,  61427 ,  61145 ,  60855 ,  60249 , 
+ 59933 ,  59277 ,  58937 ,  58589 ,  57869 ,  57498 ,  56732 ,  56339 , 
+ 55938 ,  55115 ,  54694 ,  53830 ,  53389 ,  52488 ,  52028 ,  51562 , 
+ 50614 ,  50132 ,  49152 ,  48654 ,  48151 ,  47132 ,  46616 ,  45571 , 
+ 45043 ,  44511 ,  43436 ,  42893 ,  41800 ,  41248 ,  40695 ,  39580 , 
+ 39020 ,  37894 ,  37328 ,  36761 ,  35623 ,  35053 ,  33911 ,  33339 , 
+ 32767 ,  32196 ,  31624 ,  30482 ,  29912 ,  28774 ,  28207 ,  27641 , 
+ 26515 ,  25955 ,  24840 ,  24287 ,  23735 ,  22642 ,  22099 ,  21024 , 
+ 20492 ,  19964 ,  18919 ,  18403 ,  17384 ,  16881 ,  16383 ,  15403 , 
+ 14921 ,  13973 ,  13507 ,  13047 ,  12146 ,  11705 ,  10841 ,  10420 , 
+  9597 ,   9196 ,   8803 ,   8037 ,   7666 ,   6946 ,   6598 ,   6258 , 
+  5602 ,   5286 ,   4680 ,   4390 ,   4108 ,   3571 ,   3316 ,   2832 , 
+  2604 ,   2386 ,   1976 ,   1785 ,   1431 ,   1269 ,   1116 ,    839 , 
+   716 ,    497 ,    403 ,    318 ,    179 ,    124 ,     44 ,     19 , 
+     0 ,     19 ,     44 ,    124 ,    179 ,    318 ,    403 ,    497 , 
+   716 ,    839 ,   1116 ,   1269 ,   1431 ,   1785 ,   1976 ,   2386 , 
+  2604 ,   2832 ,   3316 ,   3571 ,   4108 ,   4390 ,   4680 ,   5286 , 
+  5602 ,   6258 ,   6598 ,   6946 ,   7666 ,   8037 ,   8803 ,   9196 , 
+  9597 ,  10420 ,  10841 ,  11705 ,  12146 ,  13047 ,  13507 ,  13973 , 
+ 14921 ,  15403 ,  16383 ,  16881 ,  17384 ,  18403 ,  18919 ,  19964 , 
+ 20492 ,  21024 ,  22099 ,  22642 ,  23735 ,  24287 ,  24840 ,  25955 , 
+ 26515 ,  27641 ,  28207 ,  28774 ,  29912 ,  30482 ,  31624 ,  32196 , 
+
+CREATE plink	#256 ALLOT
+
+CREATE square	#256 ALLOT	
+		square #128 0 FILL 
+		square #128 + #128 $FFFF FILL
+
+CREATE null	#256 ALLOT	
+		null #256 $8000 FILL
+
+
+CREATE sawtooth #256 ALLOT
+
+: INIT.SAW	#256  0 DO I #256 *  sawtooth I +  ! 
+			LOOP ;  
+
+CREATE triangle	#256 ALLOT
+
+: INIT.TRIA	#128    0 DO      I   #512 *  triangle I + ! LOOP
+		#256 #128 DO #256 I - #512 *  triangle I + ! LOOP 
+		-1  triangle #128 +  ! ;
+
+CREATE pulse	#256 ALLOT
+
+: INIT.PULSE	pulse #256 0  FILL
+		#256  width @  #1000  */
+		0 DO $FFFF  pulse I +  ! 
+		LOOP ;
+
+: NEW.WIDTH	phaser @  width +!
+		width @ #900 > IF #100 width ! 
+			    ENDIF
+		INIT.PULSE ;
+
+
+
+		\ (* Routines to access the wavetables *) /
+
+
+
+: SAMPLE?			\ <offset> <'table> --- <offset'> <boolean>
+
+		SWAP increment @ +	\ new offset
+		DUP 6 TIMES 2/ $FF AND 	\ high byte, remove sign extension
+		ROT + @ B>DAC		\ get sample from table & output it
+		interval @ CYCLES 	\ wait sample time
+		length 2@ OR ;		\ tone off?
+
+: LASTSAMPLE?			\ <offset> <'table> --- <offset'> <boolean>
+
+		SWAP 0  increment @ 0  D+ >R			\ "carry" ?
+		DUP 6 TIMES 2/ $FF AND ROT + @ B>DAC
+		interval @ CYCLES 
+		R> ;		\ stop if one full cycle has finished
+
+: COUNTDOWN	length 2@
+		 -1 -1 D+
+		length 2! ;
+
+
+
+			\ (* The instruments *) /
+
+
+
+: DONULL	SET.DAC 
+		old @
+	BEGIN	null SAMPLE?
+	WHILE	COUNTDOWN
+	REPEAT	old ! ;
+
+: DOSAWTOOTH	SET.DAC 
+		old @
+	BEGIN	sawtooth SAMPLE?
+	WHILE	COUNTDOWN
+	REPEAT	
+	BEGIN	sawtooth LASTSAMPLE?
+	UNTIL	old ! ;
+
+: DOTRIANGLE	SET.DAC 
+		old @
+	BEGIN	triangle SAMPLE?
+	WHILE	COUNTDOWN
+	REPEAT	
+	BEGIN	triangle LASTSAMPLE?
+	UNTIL	old ! ;
+
+: DOSINE	SET.DAC 
+		old @
+	BEGIN	sine SAMPLE?
+	WHILE	COUNTDOWN
+	REPEAT	
+	BEGIN	sine LASTSAMPLE?
+	UNTIL	old ! ;
+
+: DOSQUARE	SET.DAC 
+		old @
+	BEGIN	square SAMPLE?
+	WHILE	COUNTDOWN
+	REPEAT	DROP ;
+
+: DOPULSE	SET.DAC 
+		NEW.WIDTH
+		old @
+	BEGIN	pulse SAMPLE?
+	WHILE	COUNTDOWN
+	REPEAT	old ! ;
+
+
+DOC Karplus-Strong algorithm
+(*
+  This algorithm  produces a very interesting sound.
+  Questions:
+ 	- What do higher order filters do?
+ 	- What does a high- or bandpass filter do?
+
+  Disadvantage: PLINK and PULSE cannot be combined with the simpler
+		voices because they are slower and thus sound lower.
+*)
+ENDDOC
+
+VARIABLE ((FILL.plink))		
+
+: FILL.plink	((FILL.plink)) @ EXECUTE ;
+
+VARIABLE capacitor
+
+: DOPLINK	FILL.plink 		\ maybe prefiltered?
+		SET.DAC
+		length 2@ >R >R
+		0 capacitor !
+		0
+	BEGIN	increment @ + DUP	\ new increment
+		6 TIMES 2/ $FF AND plink + 
+		DUP >R @		\ get old sample and its address
+		capacitor @ 2/ 		\ <<-- determines decay speed!
+		DUP $7FFF + B>DAC 	\ output
+		DUP R> !		\ ..and store at address
+		- capacitor +!		\ accu := accu*(1-k) + k*plink[index]
+		R> R> 2DUP OR
+	WHILE	-1 -1 D+ >R >R		\ Not COUNTDOWN : this is faster..
+	REPEAT	DROP DROP DROP ;
+
+
+: (FILL0)	#256 0 DO RANDOM plink I + ! 		\ twanging
+		       LOOP ;
+
+: (FILL2)	#256 0 DO sine  I + @  $7FFF -		\ punchy
+			  plink I + !
+		     LOOP ;	
+
+: (FILL3)	#256 0 DO sine  I + @  $7FFF - 2/ 2/	\ mellow
+			  plink I + !
+		     LOOP ;	
+
+: SINE		[ ' DOSINE     ] LITERAL waveform ! ;
+: SQUARE	[ ' DOSQUARE   ] LITERAL waveform ! ;
+: PULSE		[ ' DOPULSE    ] LITERAL waveform ! ;
+: TRIANGLE	[ ' DOTRIANGLE ] LITERAL waveform ! ;
+: SAWTOOTH	[ ' DOSAWTOOTH ] LITERAL waveform ! ;
+: BASS		[ ' DOPLINK    ] LITERAL waveform !
+		[ ' (FILL0)    ] LITERAL ((FILL.plink)) ! ;  BASS
+: GUITAR	[ ' DOPLINK    ] LITERAL waveform !
+		[ ' (FILL2)    ] LITERAL ((FILL.plink)) ! ;
+: MARIMBA	[ ' DOPLINK    ] LITERAL waveform !
+		[ ' (FILL3)    ] LITERAL ((FILL.plink)) ! ;
+
+
+
+		\ (* Transform notes to delays and frequencies *) /
+
+
+VARIABLE tempo	4     tempo !		\ between 1 and 64 ( 1 /1 )
+VARIABLE beat   #700  beat  !		\ ==> maximum of #999
+
+: NOTE 		CREATE	,
+		  DOES	R> $7FFF AND @ 
+			octave @ DUP 
+			0< IF      ABS 0 DO 2/ LOOP
+			 ELSE ?DUP IF  0 DO 2* LOOP
+				ENDIF
+			ENDIF 
+			1 UMAX increment !
+			beat @ 0 tempo @ U*+ length 2!
+			waveform @ EXECUTE ;
+
+
+\ A halfstep is 2^(1/12). Twelve halfsteps = 2^1 = 1 octave.
+
+: +HALFSTEP	#26796 #25292 */ ;		\ note --- next_note
+
+	      ( #26797 #25293 would be accurate to 1.0E-9, but * bug.. )
+
+        #390 =: 440HZ 				\ speed dependent magic number
+		  	   440HZ
+	+HALFSTEP	   ( a# ) 
+	+HALFSTEP 	   ( b  )
+	+HALFSTEP DUP	NOTE C
+	+HALFSTEP DUP	NOTE C#
+	+HALFSTEP DUP	NOTE D
+	+HALFSTEP DUP	NOTE D#
+	+HALFSTEP DUP	NOTE E
+	+HALFSTEP DUP	NOTE F
+	+HALFSTEP DUP	NOTE F#
+	+HALFSTEP DUP	NOTE G
+	+HALFSTEP DUP	NOTE G#
+	+HALFSTEP DUP	NOTE A
+	+HALFSTEP DUP	NOTE A#
+	+HALFSTEP 	NOTE B
+
+$40 =: Bar				\ another system speed dependent magic#
+
+: T  		tempo ! ;		\ n --- 	even!
+
+: /1	  	Bar  $1 */ T  ;
+: /2  		Bar  $2 */ T  ;
+: /4		Bar  $4 */ T  ;
+: /8		Bar  $8 */ T  ;
+: /16	 	Bar $10 */ T  ;
+: /24	 	Bar $18 */ T  ;
+: /32 		Bar $20 */ T  ;
+: /64 		Bar $40 */ T  ;
+
+: 1/1	  	1 /1  ;
+: 1/2  		1 /2  ;
+: 1/4  		1 /4  ;
+: 1/8	  	1 /8  ;
+: 1/16 		1 /16 ;
+: 1/32	 	1 /32 ;
+: 1/64 		1 /64 ;
+
+: 2^x		1 SWAP ?DUP IF 0 DO 2* LOOP 
+			 ENDIF ;			\ n --- 2^n
+
+: ~		2^x Bar SWAP / T ;			\ #-of-flags ---
+
+: H		 1 octave +! ;		: +OCT	H ;
+: L		-1 octave +! ;		: -OCT	L ;
+
+: OCT		octave ! ;				\ n ---
+
+: &		beat @  0  tempo @  U*+ 
+		length 2! DONULL ;			\ a rest
+
+: PAUSE		& ;
+
+: HC H C  L ;  : LC L C	 H ;  : HC# H C# L  ;  : LC# L C# H  ;
+: HD H D  L ;  : LD L D	 H ;  : HD# H D# L  ;  : LD# L D# H  ;
+: HE H E  L ;  : LE L E	 H ;
+: HF H F  L ;  : LF L F	 H ;  : HF# H F# L  ;  : LF# L F# H  ;
+: HG H G  L ;  : LG L G	 H ;  : HG# H G# L  ;  : LG# L G# H  ;
+: HA H A  L ;  : LA L A	 H ;  : HA# H A# L  ;  : LA# L A# H  ;
+: HB H B  L ;  : LB L B	 H ;
+
+: ALLEGRO	;
+: ANDANTE	;
+: MODERATO	;
+: PRESTO	;
+: PRESTISSIMO	;
+: RITARDANDO	;
+: A.TEMPO	;
+: VIVACE	;
+: POCO		;
+
+			\ (* End of information *) /
+

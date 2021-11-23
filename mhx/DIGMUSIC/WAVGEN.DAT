@@ -1,0 +1,60 @@
+REMEMBER -mdata
+
+\ (*			( Fantasia of J.S.Bach )			*) /
+
+	: TH1	C H C	D#   G	   D#  C   D#  C    LG	C   LD#	 C L ;
+	: TH2	C H C	F    G#	   F   C   F   C    LG# C   LF	 C L ;
+	: TH3	C   B H D    F	   D   LB  D L B    G#	B   F	 B   ;
+	: TH4	    G	HC   HD#   HC  G   HC  G    D#	G   C	 G#  ;
+	: TH5	LF# A	HC   HD#   HC  A   HC  A   ;
+	: TH5A	TH5 D#	A    C	   A  ;
+	: TH5B	TH5 F#	A    D	   A  ;
+	: TH6	LG  A	A#   HD	   A#  A   A#  A    D	A   LA#	 A   ;
+	: TH7	LG  G	A#   HD	   A#  G   A#  G    LA# G   LG	 G   ;
+	: TH8	LD# A#	HD   HG	   HD  A#  HD  A#   G	A#  D#	 A#  ;
+	: TH9	C   A	HD#  HG	   HD# A   HD# A    C	A   LA	 A   ;
+	: TH10	LD  A	HC   HF#   HC  A   HC  A    D	A   LA	 A   ;
+
+	: SCR#1	TH1  TH1 TH2 TH2 TH3 TH3 C
+		TH4  LA# TH4 LG# TH4 LG TH4 TH5A 
+		TH5B TH6 TH7 TH8 TH9 TH10 TH10 ;
+
+	: TH11	LD    A#  HD  HG    HD	A#  HD A#  D	A# LA#  A#    ;
+	: TH12	LD  H C	  F#  A	    F#	C   F# C   LD#  C  LC	C  L  ;
+	: TH13	LD  H D	  G   A#    G	D   G  D   LG	D  LD	D  L  ;
+	: TH14	LD  H D	  F#  HC    F#	D   F# D   LA	D  LF#  D  L  ;
+	: TH15	LD# H C	  G   A#    G	C   G  C   LG   C  LD#  C  L  ;
+	: TH16	LD  H C	  D#  A	    D#	C   D# C   LF#  C  LD	C  L  ;
+	: TH17	LD  H LA# E   G	    E	LA# E  LA# L E  A# C#   A#    ;
+	: TH18	LD  H LA  C   G	    C	LA  C  LA  L D#	A  C	A     ;
+	: TH19	LD  H LA  C   F#    C	LA  C  LA  L D	A  LA	A     ;
+	: TH20	LD    G	  A#  HE    A#	G   A# G   C#	G  LA#  G     ;
+	: TH21	LD    F#  A   HD#   A	F#  A  F#  C	F# LA	F#    ;
+	: TH22	LD    G	  A#  HD    A#	G   A# G   LA#  G  LG	G     ;
+
+	: SCR#2		TH11  TH12  TH13  TH14  TH15  TH16
+			TH17  TH18  TH19  TH20	TH21  TH22 ;
+
+	: TH23	LD   G	A  HC	  A  G	A  G	  D#  G	 C   G	  ;
+	: TH24	LD   F# A  HC	  A  F# A  F#	  D   F# LA  F#	  ;
+	: TH25	LG   F# A  HC	  A  F# A  F#	  D#  F# C   F#	  ;
+	: TH26	LG   G	A  HC	  B  G	B  G	  D   G	 LB  G	  ;
+	: TH27	LG   A	HC HF#	  HC A	HC A	  D#  A	 C   A	  ;
+	: TH28	LG H C	F# A	  F# C	F# C	  LD# C	 LC  C	L ;
+	: TH29	LG H LB D  G	  D  LB D  LB	L G   B	 D   B	  ;
+	: TH30	LG H LB D  G	  D  LB D  LB	L G#  B	 F   B	  ;
+	: TH31	LG   G	HC HD#	  HC G	HC G	  D#  G	 C   G	  ;
+	: TH32	LG   F# HC HD#	  HC F# HC F#	  D#  F# C   F#	  ;
+	: TH33	LG   G	B  HD  3 /8 B G B HD 1/2  HD# C	 A H F#	  ;
+
+	: SCR#3 	TH23  TH24  TH25 TH26  TH27  TH28 
+			TH29  TH30  TH31 TH32  TH32  TH33 ;
+
+	: FANTASIA	1/4 SCR#1 
+			    SCR#2 
+			    SCR#3 
+			F# 1 ( 4 ) /1  G G G G & L ;
+
+
+			\ (* End of information *) /
+

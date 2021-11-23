@@ -1,0 +1,45 @@
+DECIMAL
+
+: SET.DAC
+	$1D  13 I! ;		\ instruct X1 to listen, others not.
+				\ Needed because EMIT does $1E 13 I!
+
+VARIABLE wait 100 wait !
+
+: STROBE			\ Short negative pulse on X1 line
+	SET.DAC			\ Only once if no EMIT or KEY intervention
+	 0 12 I! 		\ 2 or 3 cycles ==> 500..750 ns
+	-1 12 I! ;
+
+: B>DAC				\ n ---		Assumes SET.DAC
+	8 I! 
+	0 12 I! -1 12 I! ;	\ STROBE
+
+VARIABLE step	1 step !
+
+: RAMP				\ ---
+	SET.DAC
+	0 -1 FOR
+		step @ + DUP B>DAC
+		wait @ CYCLES
+	     NEXT
+	DROP ;
+
+: SQUARE
+	SET.DAC
+	0 -1 FOR
+		step @ + DUP 0< -1 * B>DAC
+		wait @ CYCLES
+	     NEXT
+	DROP ;
+
+: SQ2
+	SET.DAC
+	0 -1 FOR
+		step @ + DUP 0< B>DAC
+		wait @ CYCLES
+	     NEXT
+	DROP ;
+
+			\ (* End of Source *) /
+
